@@ -5,6 +5,8 @@ import ContextMenu from './ContextMenu';
 import Notepad from '../Applications/Notepad';
 import FileExplorer from '../FileExplorer/FileExplorer';
 import fileService from '../../services/fileService';
+import Browser from '../Applications/Browser';
+import Terminal from '../Applications/Terminal';
 
 const Desktop = ({ createWindow }) => {
   const [contextMenu, setContextMenu] = useState({ visible: false, x: 0, y: 0 });
@@ -56,6 +58,22 @@ const Desktop = ({ createWindow }) => {
       x: 50,
       y: 550,
       type: 'fileexplorer'
+    },
+    {
+      id: 7,
+      name: 'Browser',
+      icon: '🌐',
+      x: 50,
+      y: 650,
+      type: 'browser'
+    },
+    {
+      id: 8,
+      name: 'Terminal',
+      icon: '🖳',
+      x: 50,
+      y: 750,
+      type: 'terminal'
     }
   ]);
 
@@ -124,6 +142,24 @@ const Desktop = ({ createWindow }) => {
           initialPosition: { x: 150, y: 150 },
           initialSize: { width: 800, height: 600 },
           minSize: { width: 600, height: 400 }
+        });
+        break;
+      case 'browser':
+        createWindow({
+          title: 'Web Browser',
+          content: <Browser />,
+          initialPosition: { x: 200, y: 200 },
+          initialSize: { width: 900, height: 600 },
+          minSize: { width: 400, height: 300 }
+        });
+        break;
+      case 'terminal':
+        createWindow({
+          title: 'Terminal',
+          content: <Terminal />,
+          initialPosition: { x: 250, y: 250 },
+          initialSize: { width: 700, height: 400 },
+          minSize: { width: 400, height: 250 }
         });
         break;
       case 'computer':
