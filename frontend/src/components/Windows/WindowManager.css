@@ -1,0 +1,36 @@
+.window-manager {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  pointer-events: none;
+  z-index: 100;
+}
+
+.window-manager * {
+  pointer-events: auto;
+}
+
+/* Window manager overlay for handling global events */
+.window-manager::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  z-index: -1;
+}
+
+/* Ensure windows are properly layered */
+.window-manager .window {
+  pointer-events: auto;
+}
+
+/* Window manager context for child components */
+.window-manager-context {
+  position: relative;
+  z-index: 1;
+} 

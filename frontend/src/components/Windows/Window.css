@@ -1,0 +1,172 @@
+.window {
+  position: absolute;
+  background: rgba(30, 30, 30, 0.95);
+  backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 8px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+  overflow: hidden;
+  transition: all 0.2s ease;
+  user-select: none;
+}
+
+.window.focused {
+  border-color: rgba(255, 255, 255, 0.4);
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.4);
+}
+
+.window.maximized {
+  border-radius: 0;
+  border: none;
+}
+
+/* Window Header */
+.window-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: 32px;
+  background: rgba(40, 40, 40, 0.9);
+  backdrop-filter: blur(10px);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  cursor: move;
+  padding: 0 8px;
+  user-select: none;
+}
+
+.window-title {
+  font-size: 14px;
+  font-weight: 500;
+  color: rgba(255, 255, 255, 0.9);
+  flex: 1;
+  margin-right: 8px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Window Content */
+.window-content {
+  height: calc(100% - 32px);
+  overflow: auto;
+  background: rgba(25, 25, 25, 0.8);
+  color: rgba(255, 255, 255, 0.9);
+}
+
+/* Resize Handles */
+.window-resize-handle {
+  position: absolute;
+  background: transparent;
+  z-index: 10;
+}
+
+.window-resize-handle.n {
+  top: 0;
+  left: 8px;
+  right: 8px;
+  height: 4px;
+  cursor: n-resize;
+}
+
+.window-resize-handle.s {
+  bottom: 0;
+  left: 8px;
+  right: 8px;
+  height: 4px;
+  cursor: s-resize;
+}
+
+.window-resize-handle.e {
+  top: 8px;
+  right: 0;
+  bottom: 8px;
+  width: 4px;
+  cursor: e-resize;
+}
+
+.window-resize-handle.w {
+  top: 8px;
+  left: 0;
+  bottom: 8px;
+  width: 4px;
+  cursor: w-resize;
+}
+
+.window-resize-handle.ne {
+  top: 0;
+  right: 0;
+  width: 8px;
+  height: 8px;
+  cursor: ne-resize;
+}
+
+.window-resize-handle.nw {
+  top: 0;
+  left: 0;
+  width: 8px;
+  height: 8px;
+  cursor: nw-resize;
+}
+
+.window-resize-handle.se {
+  bottom: 0;
+  right: 0;
+  width: 8px;
+  height: 8px;
+  cursor: se-resize;
+}
+
+.window-resize-handle.sw {
+  bottom: 0;
+  left: 0;
+  width: 8px;
+  height: 8px;
+  cursor: sw-resize;
+}
+
+/* Hover effects for resize handles */
+.window-resize-handle:hover {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+/* Window animations */
+@keyframes windowFadeIn {
+  from {
+    opacity: 0;
+    transform: scale(0.9) translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+.window {
+  animation: windowFadeIn 0.2s ease-out;
+}
+
+/* Focus transition */
+.window {
+  transition: border-color 0.2s ease, box-shadow 0.2s ease, z-index 0s;
+}
+
+/* Custom scrollbar for window content */
+.window-content::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+.window-content::-webkit-scrollbar-track {
+  background: rgba(255, 255, 255, 0.05);
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 4px;
+}
+
+.window-content::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 4px;
+}
+
+.window-content::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.3);
+} 
