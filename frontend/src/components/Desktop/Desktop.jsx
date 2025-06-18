@@ -3,6 +3,8 @@ import './Desktop.css';
 import DesktopIcon from './DesktopIcon';
 import ContextMenu from './ContextMenu';
 import Notepad from '../Applications/Notepad';
+import FileExplorer from '../FileExplorer/FileExplorer';
+import fileService from '../../services/fileService';
 
 const Desktop = ({ createWindow }) => {
   const [contextMenu, setContextMenu] = useState({ visible: false, x: 0, y: 0 });
@@ -46,10 +48,42 @@ const Desktop = ({ createWindow }) => {
       x: 50,
       y: 450,
       type: 'notepad'
+    },
+    {
+      id: 6,
+      name: 'File Explorer',
+      icon: '📂',
+      x: 50,
+      y: 550,
+      type: 'fileexplorer'
     }
   ]);
 
   const desktopRef = useRef(null);
+
+  // Listen for file opening events
+  useEffect(() => {
+    const unsubscribe = fileService.addListener((event) => {
+      if (event.type === 'OPEN_FILE') {
+        handleFileOpen(event);
+      }
+    });
+
+    return unsubscribe;
+  }, []);
+
+  const handleFileOpen = (fileEvent) => {
+    const { filePath, fileContent, fileType } = fileEvent;
+    
+    // Create a new Notepad window with the file content
+    createWindow({
+      title: `${filePath.split('/').pop()} - Notepad`,
+      content: <Notepad initialContent={fileContent} initialFilePath={filePath} initialLanguage={fileType} />,
+      initialPosition: { x: 100 + Math.random() * 100, y: 100 + Math.random() * 100 },
+      initialSize: { width: 800, height: 600 },
+      minSize: { width: 400, height: 300 }
+    });
+  };
 
   const handleContextMenu = (e) => {
     e.preventDefault();
@@ -83,11 +117,20 @@ const Desktop = ({ createWindow }) => {
           minSize: { width: 300, height: 200 }
         });
         break;
+      case 'fileexplorer':
+        createWindow({
+          title: 'File Explorer',
+          content: <FileExplorer />,
+          initialPosition: { x: 150, y: 150 },
+          initialSize: { width: 800, height: 600 },
+          minSize: { width: 600, height: 400 }
+        });
+        break;
       case 'computer':
         createWindow({
           title: 'My Computer',
           content: <div style={{ padding: '20px', color: 'white' }}>My Computer - Coming Soon</div>,
-          initialPosition: { x: 150, y: 150 },
+          initialPosition: { x: 200, y: 200 },
           initialSize: { width: 500, height: 300 },
           minSize: { width: 400, height: 250 }
         });
@@ -96,7 +139,7 @@ const Desktop = ({ createWindow }) => {
         createWindow({
           title: 'Documents',
           content: <div style={{ padding: '20px', color: 'white' }}>Documents Folder - Coming Soon</div>,
-          initialPosition: { x: 200, y: 200 },
+          initialPosition: { x: 250, y: 250 },
           initialSize: { width: 500, height: 300 },
           minSize: { width: 400, height: 250 }
         });
@@ -105,7 +148,7 @@ const Desktop = ({ createWindow }) => {
         createWindow({
           title: 'Settings',
           content: <div style={{ padding: '20px', color: 'white' }}>Settings - Coming Soon</div>,
-          initialPosition: { x: 250, y: 250 },
+          initialPosition: { x: 300, y: 300 },
           initialSize: { width: 500, height: 300 },
           minSize: { width: 400, height: 250 }
         });

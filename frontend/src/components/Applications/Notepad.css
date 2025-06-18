@@ -1,72 +1,226 @@
 .notepad-app {
-  height: 100%;
   display: flex;
   flex-direction: column;
-  background: #1e1e1e;
-  color: #ffffff;
+  height: 100%;
+  background: var(--window-bg);
+  border-radius: 8px;
+  overflow: hidden;
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
 }
 
 .notepad-toolbar {
   display: flex;
-  background: #2d2d2d;
-  border-bottom: 1px solid #404040;
-  padding: 4px;
-  gap: 2px;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 12px;
+  background: linear-gradient(135deg, #2c3e50 0%, #34495e 100%);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  min-height: 40px;
+  backdrop-filter: blur(10px);
+}
+
+.toolbar-section {
+  display: flex;
+  align-items: center;
+  gap: 8px;
 }
 
 .toolbar-button {
+  background: linear-gradient(135deg, #3498db 0%, #2980b9 100%);
+  color: white;
+  border: none;
   padding: 6px 12px;
-  background: transparent;
-  border: 1px solid transparent;
-  color: #ffffff;
+  border-radius: 6px;
   cursor: pointer;
-  border-radius: 4px;
   font-size: 12px;
+  font-weight: 500;
   transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
 }
 
 .toolbar-button:hover {
-  background: rgba(255, 255, 255, 0.1);
-  border-color: rgba(255, 255, 255, 0.2);
+  background: linear-gradient(135deg, #2980b9 0%, #1f5f8b 100%);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(52, 152, 219, 0.3);
 }
 
 .toolbar-button:active {
-  background: rgba(255, 255, 255, 0.2);
+  transform: translateY(0);
+  box-shadow: 0 2px 6px rgba(52, 152, 219, 0.3);
 }
 
-.notepad-textarea {
-  flex: 1;
-  background: #1e1e1e;
-  color: #ffffff;
-  border: none;
-  outline: none;
-  padding: 12px;
-  font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
-  font-size: 14px;
-  line-height: 1.5;
-  resize: none;
-  text-selectable;
-}
-
-.notepad-textarea::placeholder {
-  color: #666666;
-}
-
-/* Custom scrollbar for textarea */
-.notepad-textarea::-webkit-scrollbar {
-  width: 12px;
-  height: 12px;
-}
-
-.notepad-textarea::-webkit-scrollbar-track {
-  background: #2d2d2d;
-}
-
-.notepad-textarea::-webkit-scrollbar-thumb {
-  background: #404040;
+.toolbar-select {
+  background: linear-gradient(135deg, #34495e 0%, #2c3e50 100%);
+  color: white;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  padding: 6px 10px;
   border-radius: 6px;
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 500;
+  transition: all 0.2s ease;
+  backdrop-filter: blur(10px);
+  min-width: 100px;
 }
 
-.notepad-textarea::-webkit-scrollbar-thumb:hover {
-  background: #505050;
+.toolbar-select:hover {
+  background: linear-gradient(135deg, #2c3e50 0%, #243342 100%);
+  border-color: rgba(255, 255, 255, 0.3);
+}
+
+.toolbar-select:focus {
+  outline: none;
+  border-color: #3498db;
+  box-shadow: 0 0 0 2px rgba(52, 152, 219, 0.2);
+}
+
+.toolbar-select option {
+  background: #2c3e50;
+  color: white;
+  padding: 8px;
+}
+
+.notepad-editor-container {
+  flex: 1;
+  position: relative;
+  overflow: hidden;
+  background: #1e1e1e;
+  border-radius: 0 0 8px 8px;
+}
+
+.notepad-editor-container .monaco-editor {
+  border-radius: 0 0 8px 8px;
+}
+
+.notepad-statusbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 6px 12px;
+  background: linear-gradient(135deg, #34495e 0%, #2c3e50 100%);
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+  font-size: 11px;
+  color: #bdc3c7;
+  backdrop-filter: blur(10px);
+  min-height: 24px;
+}
+
+.status-item {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 6px;
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+/* Monaco Editor Customization */
+.notepad-editor-container .monaco-editor .margin {
+  background: #252526 !important;
+}
+
+.notepad-editor-container .monaco-editor .monaco-editor-background {
+  background: #1e1e1e !important;
+}
+
+.notepad-editor-container .monaco-editor .scrollbar .slider {
+  background: rgba(255, 255, 255, 0.1) !important;
+}
+
+.notepad-editor-container .monaco-editor .scrollbar .slider:hover {
+  background: rgba(255, 255, 255, 0.2) !important;
+}
+
+.notepad-editor-container .monaco-editor .minimap {
+  background: #252526 !important;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .notepad-toolbar {
+    flex-direction: column;
+    gap: 8px;
+    padding: 12px;
+  }
+  
+  .toolbar-section {
+    width: 100%;
+    justify-content: center;
+  }
+  
+  .toolbar-select {
+    min-width: 80px;
+    font-size: 11px;
+  }
+  
+  .notepad-statusbar {
+    flex-direction: column;
+    gap: 4px;
+    padding: 8px 12px;
+  }
+  
+  .status-item {
+    font-size: 10px;
+  }
+}
+
+/* Animation for toolbar buttons */
+@keyframes buttonPulse {
+  0% { transform: scale(1); }
+  50% { transform: scale(1.05); }
+  100% { transform: scale(1); }
+}
+
+.toolbar-button:focus {
+  animation: buttonPulse 0.3s ease;
+}
+
+/* Custom scrollbar for the entire notepad */
+.notepad-app::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+.notepad-app::-webkit-scrollbar-track {
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 4px;
+}
+
+.notepad-app::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 4px;
+}
+
+.notepad-app::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.3);
+}
+
+/* Loading state for Monaco Editor */
+.notepad-editor-container .monaco-editor.loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #1e1e1e;
+  color: #bdc3c7;
+  font-size: 14px;
+}
+
+/* Error state */
+.notepad-app.error {
+  border: 2px solid #e74c3c;
+}
+
+.error-message {
+  background: #e74c3c;
+  color: white;
+  padding: 8px 12px;
+  border-radius: 4px;
+  margin: 8px;
+  font-size: 12px;
+  text-align: center;
 } 
