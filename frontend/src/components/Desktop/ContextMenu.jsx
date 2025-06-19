@@ -1,36 +1,45 @@
 import React from 'react';
 import './ContextMenu.css';
 
-const ContextMenu = ({ x, y, onAction }) => {
-  const menuItems = [
-    {
-      id: 'view',
-      label: 'View',
-      icon: '👁️',
-      submenu: [
-        { id: 'large-icons', label: 'Large Icons' },
-        { id: 'small-icons', label: 'Small Icons' },
-        { id: 'list', label: 'List' },
-        { id: 'details', label: 'Details' }
-      ]
-    },
-    {
-      id: 'sort-by',
-      label: 'Sort By',
-      icon: '📊',
-      submenu: [
-        { id: 'name', label: 'Name' },
-        { id: 'size', label: 'Size' },
-        { id: 'type', label: 'Type' },
-        { id: 'date', label: 'Date Modified' }
-      ]
-    },
-    { id: 'refresh', label: 'Refresh', icon: '🔄' },
-    { id: 'new-folder', label: 'New Folder', icon: '📁' },
-    { id: 'new-file', label: 'New File', icon: '📄' },
-    { id: 'paste', label: 'Paste', icon: '📋' },
-    { id: 'properties', label: 'Properties', icon: '⚙️' }
-  ];
+const ContextMenu = ({ x, y, onAction, menuType }) => {
+  let menuItems;
+  if (menuType === 'icon') {
+    menuItems = [
+      { id: 'open', label: 'Open', icon: '📂' },
+      { id: 'view', label: 'View', icon: '👁️' },
+      { id: 'properties', label: 'Properties', icon: '⚙️' }
+    ];
+  } else {
+    menuItems = [
+      {
+        id: 'view',
+        label: 'View',
+        icon: '👁️',
+        submenu: [
+          { id: 'large-icons', label: 'Large Icons' },
+          { id: 'small-icons', label: 'Small Icons' },
+          { id: 'list', label: 'List' },
+          { id: 'details', label: 'Details' }
+        ]
+      },
+      {
+        id: 'sort-by',
+        label: 'Sort By',
+        icon: '📊',
+        submenu: [
+          { id: 'name', label: 'Name' },
+          { id: 'size', label: 'Size' },
+          { id: 'type', label: 'Type' },
+          { id: 'date', label: 'Date Modified' }
+        ]
+      },
+      { id: 'refresh', label: 'Refresh', icon: '🔄' },
+      { id: 'new-folder', label: 'New Folder', icon: '📁' },
+      { id: 'new-file', label: 'New File', icon: '📄' },
+      { id: 'paste', label: 'Paste', icon: '📋' },
+      { id: 'properties', label: 'Properties', icon: '⚙️' }
+    ];
+  }
 
   const handleItemClick = (itemId) => {
     onAction(itemId);

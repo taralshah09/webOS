@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
 import Editor from '@monaco-editor/react';
 import fileService from '../../services/fileService';
 import './Notepad.css';
@@ -15,7 +15,7 @@ Features:
 • Multiple themes and customization options
 • Professional editing experience
 
-You can:
+You can:  
 - Type and edit text with advanced features
 - Resize this window
 - Move it around the desktop
@@ -29,7 +29,9 @@ Try changing the language mode in the bottom status bar!`);
   const [fontSize, setFontSize] = useState(14);
   const [currentFilePath, setCurrentFilePath] = useState(initialFilePath || null);
   const [isModified, setIsModified] = useState(false);
+  const [isMounted, setIsMounted] = useState(true);
   const editorRef = useRef(null);
+  const unregistersRef = useRef([]);
 
   // Set initial state if props are provided
   useEffect(() => {
@@ -44,34 +46,11 @@ Try changing the language mode in the bottom status bar!`);
     }
   }, [initialContent, initialFilePath, initialLanguage]);
 
-  // Register with file service
-  useEffect(() => {
-    const unregister = fileService.registerFileOpener('text', (filePath, fileContent, fileType) => {
-      openFileInEditor(filePath, fileContent, fileType);
-    });
-
-    // Register for all supported file types
-    const supportedTypes = [
-      'javascript', 'typescript', 'html', 'css', 'json', 'markdown',
-      'python', 'java', 'cpp', 'c', 'php', 'ruby', 'go', 'rust',
-      'swift', 'kotlin', 'sql', 'xml', 'yaml'
-    ];
-
-    supportedTypes.forEach(type => {
-      fileService.registerFileOpener(type, (filePath, fileContent, fileType) => {
-        openFileInEditor(filePath, fileContent, fileType);
-      });
-    });
-
-    return () => {
-      unregister();
-      supportedTypes.forEach(type => {
-        fileService.openFileCallbacks.delete(type);
-      });
-    };
-  }, []);
-
-  const openFileInEditor = (filePath, fileContent, fileType) => {
+  // Stable callback for opening files
+  const openFileInEditor = useCallback((filePath, fileContent, fileType) => {
+    // Check if component is still mounted
+    if (!isMounted) return;
+    
     setContent(fileContent || '');
     setCurrentFilePath(filePath);
     setIsModified(false);
@@ -101,111 +80,232 @@ Try changing the language mode in the bottom status bar!`);
     };
     
     setLanguage(languageMap[fileType] || 'plaintext');
-  };
+  }, [isMounted]);
 
-  const handleEditorDidMount = (editor, monaco) => {
+  // Register with file service
+  useEffect(() => {
+    const unregisters = [];
+    
+    try {
+      // Register for text files
+      unregisters.push(fileService.registerFileOpener('text', openFileInEditor));
+
+      // Register for all supported file types
+      const supportedTypes = [
+        'javascript', 'typescript', 'html', 'css', 'json', 'markdown',
+        'python', 'java', 'cpp', 'c', 'php', 'ruby', 'go', 'rust',
+        'swift', 'kotlin', 'sql', 'xml', 'yaml'
+      ];
+
+      supportedTypes.forEach(type => {
+        unregisters.push(fileService.registerFileOpener(type, openFileInEditor));
+      });
+
+      // Store unregisters in ref for cleanup
+      unregistersRef.current = unregisters;
+    } catch (error) {
+      console.warn('Error registering file openers:', error);
+    }
+
+    return () => {
+      // Cleanup all file service registrations
+      unregistersRef.current.forEach(unregister => {
+        try {
+          if (typeof unregister === 'function') {
+            unregister();
+          }
+        } catch (error) {
+          console.warn('Error unregistering file opener:', error);
+        }
+      });
+      unregistersRef.current = [];
+    };
+  }, [openFileInEditor]);
+
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => {
+      setIsMounted(false);
+      
+      // Dispose Monaco editor
+      if (editorRef.current) {
+        try {
+          editorRef.current.dispose();
+        } catch (error) {
+          console.warn('Error disposing Monaco editor:', error);
+        }
+      }
+    };
+  }, []);
+
+  const handleEditorDidMount = useCallback((editor) => {
     editorRef.current = editor;
-  };
+    
+    // Add error handling for editor events
+    try {
+      editor.onDidDispose(() => {
+        editorRef.current = null;
+      });
+    } catch (error) {
+      console.warn('Error setting up editor dispose handler:', error);
+    }
+  }, []);
 
-  const handleEditorChange = (value, event) => {
-    setContent(value);
+  const handleEditorChange = useCallback((value) => {
+    if (!isMounted) return;
+    
+    setContent(value || '');
     if (currentFilePath) {
       setIsModified(true);
     }
-  };
+  }, [isMounted, currentFilePath]);
 
-  const handleLanguageChange = (e) => {
+  const handleLanguageChange = useCallback((e) => {
+    if (!isMounted) return;
     setLanguage(e.target.value);
-  };
+  }, [isMounted]);
 
-  const handleThemeChange = (e) => {
+  const handleThemeChange = useCallback((e) => {
+    if (!isMounted) return;
     setTheme(e.target.value);
-  };
+  }, [isMounted]);
 
-  const handleFontSizeChange = (e) => {
+  const handleFontSizeChange = useCallback((e) => {
+    if (!isMounted) return;
     setFontSize(parseInt(e.target.value));
-  };
+  }, [isMounted]);
 
-  const handleNewFile = () => {
+  const handleNewFile = useCallback(() => {
+    if (!isMounted) return;
+    
     setContent('');
     setCurrentFilePath(null);
     setIsModified(false);
     setLanguage('plaintext');
-  };
+  }, [isMounted]);
 
-  const handleSave = () => {
+  const handleSave = useCallback(() => {
+    if (!isMounted) return;
+    
     if (currentFilePath) {
       // Save to the file system (this would need to be integrated with the file system)
       console.log('Saving to:', currentFilePath, content);
       setIsModified(false);
     } else {
       // Save as new file
+      try {
+        const blob = new Blob([content], { type: 'text/plain' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = 'document.txt';
+        a.click();
+        
+        // Clean up the URL after a short delay
+        setTimeout(() => {
+          URL.revokeObjectURL(url);
+        }, 100);
+      } catch (error) {
+        console.error('Error saving file:', error);
+      }
+    }
+  }, [isMounted, currentFilePath, content]);
+
+  const handleSaveAs = useCallback(() => {
+    if (!isMounted) return;
+    
+    try {
       const blob = new Blob([content], { type: 'text/plain' });
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = 'document.txt';
+      a.download = currentFilePath ? currentFilePath.split('/').pop() : 'document.txt';
       a.click();
-      URL.revokeObjectURL(url);
+      
+      // Clean up the URL after a short delay
+      setTimeout(() => {
+        URL.revokeObjectURL(url);
+      }, 100);
+    } catch (error) {
+      console.error('Error saving file as:', error);
     }
-  };
+  }, [isMounted, content, currentFilePath]);
 
-  const handleSaveAs = () => {
-    const blob = new Blob([content], { type: 'text/plain' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = currentFilePath ? currentFilePath.split('/').pop() : 'document.txt';
-    a.click();
-    URL.revokeObjectURL(url);
-  };
-
-  const handleOpen = () => {
-    const input = document.createElement('input');
-    input.type = 'file';
-    input.accept = '.txt,.js,.jsx,.ts,.tsx,.html,.css,.json,.md,.py,.java,.cpp,.c,.php,.rb,.go,.rs,.swift,.kt';
-    input.onchange = (e) => {
-      const file = e.target.files[0];
-      if (file) {
-        const reader = new FileReader();
-        reader.onload = (e) => {
-          const extension = file.name.split('.').pop().toLowerCase();
-          const languageMap = {
-            'js': 'javascript',
-            'jsx': 'javascript',
-            'ts': 'typescript',
-            'tsx': 'typescript',
-            'html': 'html',
-            'css': 'css',
-            'json': 'json',
-            'md': 'markdown',
-            'py': 'python',
-            'java': 'java',
-            'cpp': 'cpp',
-            'c': 'c',
-            'php': 'php',
-            'rb': 'ruby',
-            'go': 'go',
-            'rs': 'rust',
-            'swift': 'swift',
-            'kt': 'kotlin'
+  const handleOpen = useCallback(() => {
+    if (!isMounted) return;
+    
+    try {
+      const input = document.createElement('input');
+      input.type = 'file';
+      input.accept = '.txt,.js,.jsx,.ts,.tsx,.html,.css,.json,.md,.py,.java,.cpp,.c,.php,.rb,.go,.rs,.swift,.kt';
+      
+      const handleFileChange = (e) => {
+        const file = e.target.files[0];
+        if (file && isMounted) {
+          const reader = new FileReader();
+          reader.onload = (e) => {
+            if (!isMounted) return;
+            
+            const extension = file.name.split('.').pop().toLowerCase();
+            const languageMap = {
+              'js': 'javascript',
+              'jsx': 'javascript',
+              'ts': 'typescript',
+              'tsx': 'typescript',
+              'html': 'html',
+              'css': 'css',
+              'json': 'json',
+              'md': 'markdown',
+              'py': 'python',
+              'java': 'java',
+              'cpp': 'cpp',
+              'c': 'c',
+              'php': 'php',
+              'rb': 'ruby',
+              'go': 'go',
+              'rs': 'rust',
+              'swift': 'swift',
+              'kt': 'kotlin'
+            };
+            
+            openFileInEditor(file.name, e.target.result, languageMap[extension] || 'text');
           };
           
-          openFileInEditor(file.name, e.target.result, languageMap[extension] || 'text');
-        };
-        reader.readAsText(file);
-      }
-    };
-    input.click();
-  };
-
-  const getWindowTitle = () => {
-    if (currentFilePath) {
-      const fileName = currentFilePath.split('/').pop();
-      return `${fileName}${isModified ? ' *' : ''} - Notepad`;
+          reader.onerror = () => {
+            console.error('Error reading file');
+          };
+          
+          reader.readAsText(file);
+        }
+        
+        // Clean up the input element
+        if (input.parentNode) {
+          input.parentNode.removeChild(input);
+        }
+      };
+      
+      input.onchange = handleFileChange;
+      
+      // Add to DOM temporarily to trigger click
+      input.style.display = 'none';
+      document.body.appendChild(input);
+      input.click();
+      
+    } catch (error) {
+      console.error('Error opening file:', error);
     }
-    return `Untitled${isModified ? ' *' : ''} - Notepad`;
-  };
+  }, [isMounted, openFileInEditor]);
+
+  // Get current position safely
+  const getCurrentPosition = useCallback(() => {
+    try {
+      return editorRef.current?.getPosition() || { lineNumber: 1, column: 1 };
+    } catch (error) {
+      return { lineNumber: 1, column: 1 };
+    }
+  }, []);
+
+  const currentPosition = getCurrentPosition();
 
   return (
     <div className="notepad-app">
@@ -347,16 +447,21 @@ Try changing the language mode in the bottom status bar!`);
       </div>
       
       <div className="notepad-statusbar">
-        <span className="status-item">Ln {editorRef.current?.getPosition()?.lineNumber || 1}, Col {editorRef.current?.getPosition()?.column || 1}</span>
+        <span className="status-item">
+          Ln {currentPosition.lineNumber}, Col {currentPosition.column}
+        </span>
         <span className="status-item">{language.toUpperCase()}</span>
         <span className="status-item">{content.length} characters</span>
         <span className="status-item">{content.split('\n').length} lines</span>
         {currentFilePath && (
           <span className="status-item">📁 {currentFilePath}</span>
         )}
+        {isModified && (
+          <span className="status-item">● Modified</span>
+        )}
       </div>
     </div>
   );
 };
 
-export default Notepad; 
+export default Notepad;
