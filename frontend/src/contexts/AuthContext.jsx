@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
+import * as authService from '../services/authService';
 
 const AuthContext = createContext();
 
@@ -40,19 +41,54 @@ export const AuthProvider = ({ children }) => {
     checkAuth();
   }, []);
 
-  const login = (userData) => {
-    setUser(userData);
-    const newToken = `token_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-    setToken(newToken);
-    localStorage.setItem('webos_user', JSON.stringify(userData));
-    localStorage.setItem('webos_token', newToken);
+  const login = async (credentials) => {
+    setLoading(true);
+    try {
+      const { username, password } = credentials;
+      const res = await authService.login(username, password);
+      setUser(res.user);
+      setToken(res.token);
+      localStorage.setItem('webos_user', JSON.stringify(res.user));
+      localStorage.setItem('webos_token', res.token);
+      return { success: true, message: res.message };
+    } catch (err) {
+      return { success: false, message: err.message };
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const logout = () => {
-    setUser(null);
-    setToken(null);
-    localStorage.removeItem('webos_user');
-    localStorage.removeItem('webos_token');
+  const logout = async () => {
+    setLoading(true);
+    try {
+      if (token) {
+        await authService.logout(token);
+      }
+    } catch (err) {
+      // Optionally handle logout error
+    } finally {
+      setUser(null);
+      setToken(null);
+      localStorage.removeItem('webos_user');
+      localStorage.removeItem('webos_token');
+      setLoading(false);
+    }
+  };
+
+  const register = async ({ username, email, password }) => {
+    setLoading(true);
+    try {
+      const res = await authService.register(username, email, password);
+      setUser(res.user);
+      setToken(res.token);
+      localStorage.setItem('webos_user', JSON.stringify(res.user));
+      localStorage.setItem('webos_token', res.token);
+      return { success: true, message: res.message };
+    } catch (err) {
+      return { success: false, message: err.message };
+    } finally {
+      setLoading(false);
+    }
   };
 
   const updateUser = (updates) => {
@@ -71,6 +107,7 @@ export const AuthProvider = ({ children }) => {
     loading,
     login,
     logout,
+    register,
     updateUser,
     isAuthenticated
   };

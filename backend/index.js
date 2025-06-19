@@ -5,11 +5,14 @@ import mongoose from "mongoose";
 import cors from "cors";
 import cookieParser from "cookie-parser";
 import http from "http";
+import authRoutes from './src/routes/auth.routes.js';
 const app = express();
-
+const PORT = process.env.PORT || 5000;
+const MONGO_URL = process.env.MONGO_URL;
+const FRONTEND_URL = process.env.FRONTEND_URL;
 // MongoDB connection
 mongoose
-  .connect(process.env.MONGO_URL)
+  .connect(MONGO_URL)
   .then(() => console.log("DB connected!"))
   .catch((err) => console.log("Error : ", err.message));
 
@@ -20,7 +23,7 @@ app.use(cookieParser());
 
 app.use(
   cors({
-    origin: [frontend_url, "http://localhost:5173"],
+    origin: [FRONTEND_URL],
     methods: ["GET", "POST", "PUT", "DELETE"],
     credentials: true,
   })
@@ -28,7 +31,9 @@ app.use(
 
 
 // Routes
+app.use('/api/auth', authRoutes);
+
 
 
 // Server start
-server.listen(PORT, () => console.log("Server running on PORT : " + PORT));
+app.listen(PORT, () => console.log("Server running on PORT : " + PORT));

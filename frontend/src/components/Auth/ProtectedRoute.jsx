@@ -1,9 +1,12 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import LoginForm from './LoginForm';
+import RegisterForm from './RegisterForm';
+import './ProtectedRoute.css';
 
 const ProtectedRoute = ({ children, fallback = null }) => {
-  const { user, loading, login } = useAuth();
+  const { user, loading, login, register } = useAuth();
+  const [showRegister, setShowRegister] = useState(false);
 
   // Show loading state while checking authentication
   if (loading) {
@@ -17,7 +20,18 @@ const ProtectedRoute = ({ children, fallback = null }) => {
 
   // Show login form if not authenticated
   if (!user) {
-    return <LoginForm onLogin={login} />;
+    return (
+      <div className="protected-overlay">
+        <div className="protected-form-wrapper">
+          {showRegister ? (
+            <RegisterForm onRegister={register} />
+          ) : (
+            <LoginForm onLogin={login} />
+          )}
+          
+        </div>
+      </div>
+    );
   }
 
   // Show fallback if provided and not authenticated

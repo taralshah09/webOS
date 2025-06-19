@@ -40,7 +40,7 @@ const UserMenu = () => {
         className="user-avatar"
         onClick={handleToggle}
         onError={(e) => {
-          e.target.src = `https://api.dicebear.com/7.x/avataaars/svg?seed=${user.username}`;
+          e.target.src = `https://tinyurl.com/mr2mpjsk`;
         }}
       />
       
