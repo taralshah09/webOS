@@ -88,7 +88,7 @@ const DesktopIcon = ({ icon, onMove, onDoubleClick, onContextMenu }) => {
       style={{
         left: `${icon.x}px`,
         top: `${icon.y}px`
-      }}
+      }}  
       onMouseDown={handleMouseDown}
       onDoubleClick={handleDoubleClick}
       onClick={handleClick}

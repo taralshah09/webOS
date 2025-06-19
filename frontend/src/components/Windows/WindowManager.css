@@ -1,11 +1,25 @@
+/* Window stacking and overlays */
 .window-manager {
-  position: fixed;
-  top: 0;
-  left: 0;
+  position: relative;
   width: 100vw;
   height: 100vh;
-  pointer-events: none;
+  z-index: 5;
+}
+
+.window-overlay {
+  position: absolute;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background: rgba(32,33,36,0.25);
   z-index: 100;
+  pointer-events: none;
+}
+
+.window-snap-highlight {
+  position: absolute;
+  border: 2px dashed var(--color-accent);
+  background: rgba(0,120,212,0.08);
+  border-radius: var(--radius);
+  z-index: 101;
 }
 
 .window-manager * {
@@ -34,3 +48,4 @@
   position: relative;
   z-index: 1;
 } 
+
