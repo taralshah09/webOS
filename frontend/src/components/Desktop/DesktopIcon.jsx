@@ -1,7 +1,7 @@
 import React, { useState, useRef } from 'react';
 import './DesktopIcon.css';
 
-const DesktopIcon = ({ icon, onMove, onDoubleClick }) => {
+const DesktopIcon = ({ icon, onMove, onDoubleClick, onContextMenu }) => {
   const [isDragging, setIsDragging] = useState(false);
   const [isSelected, setIsSelected] = useState(false);
   const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
@@ -42,13 +42,15 @@ const DesktopIcon = ({ icon, onMove, onDoubleClick }) => {
     setIsDragging(false);
   };
 
-  const handleDoubleClick = (e) => {
+  const handleDoubleClick = () => {
+    console.log('DesktopIcon: Double-click event triggered for icon:', icon);
     if (onDoubleClick) {
-      onDoubleClick(e);
+      console.log('DesktopIcon: Calling onDoubleClick with icon:', icon);
+      onDoubleClick(icon);
     }
   };
 
-  const handleClick = (e) => {
+  const handleClick = () => {
     if (!isDragging) {
       setIsSelected(true);
     }
@@ -90,6 +92,7 @@ const DesktopIcon = ({ icon, onMove, onDoubleClick }) => {
       onMouseDown={handleMouseDown}
       onDoubleClick={handleDoubleClick}
       onClick={handleClick}
+      onContextMenu={e => onContextMenu && onContextMenu(e, icon)}
     >
       <div className="icon-image">
         <span className="icon-emoji">{icon.icon}</span>

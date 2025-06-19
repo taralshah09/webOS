@@ -6,6 +6,8 @@ import cors from "cors";
 import cookieParser from "cookie-parser";
 import http from "http";
 import authRoutes from './src/routes/auth.routes.js';
+import desktopRoutes from './src/routes/desktop.routes.js';
+import { initializeSystemApps } from './src/services/appService.services.js';
 const app = express();
 const PORT = process.env.PORT || 5000;
 const MONGO_URL = process.env.MONGO_URL;
@@ -13,7 +15,11 @@ const FRONTEND_URL = process.env.FRONTEND_URL;
 // MongoDB connection
 mongoose
   .connect(MONGO_URL)
-  .then(() => console.log("DB connected!"))
+  .then(async () => {
+    console.log("DB connected!");
+    // Initialize system apps
+    await initializeSystemApps();
+  })
   .catch((err) => console.log("Error : ", err.message));
 
 // Middlewares
@@ -32,6 +38,7 @@ app.use(
 
 // Routes
 app.use('/api/auth', authRoutes);
+app.use('/api/desktop', desktopRoutes);
 
 
 
