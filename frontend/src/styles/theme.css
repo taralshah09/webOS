@@ -1,0 +1,25 @@
+:root {
+  --color-bg: #202124;
+  --color-bg-alt: #2d2e32;
+  --color-accent: #0078d4;
+  --color-accent-hover: #005fa3;
+  --color-text: #f3f3f3;
+  --color-text-secondary: #b0b0b0;
+  --color-border: #3a3a3a;
+  --color-shadow: rgba(0,0,0,0.15);
+
+  --font-main: 'Segoe UI', 'Arial', sans-serif;
+  --font-size-base: 16px;
+  --font-size-sm: 14px;
+  --font-size-lg: 18px;
+
+  --radius: 8px;
+  --shadow: 0 2px 8px var(--color-shadow);
+
+  --transition: 0.2s cubic-bezier(.4,0,.2,1);
+
+  --spacing-xs: 4px;
+  --spacing-sm: 8px;
+  --spacing-md: 16px;
+  --spacing-lg: 24px;
+} 

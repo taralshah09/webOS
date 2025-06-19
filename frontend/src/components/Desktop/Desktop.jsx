@@ -9,6 +9,8 @@ import Browser from '../Applications/Browser';
 import Terminal from '../Applications/Terminal';
 import { getDesktop, updateIconPosition, updateDesktopIcons } from '../../services/desktopService';
 import { useAuth } from '../../contexts/AuthContext';
+import '../../styles/theme.css';
+import WallpaperModal from './WallpaperModal';
 
 const Desktop = ({ createWindow }) => {
   const { token } = useAuth();
@@ -17,6 +19,8 @@ const Desktop = ({ createWindow }) => {
   const [desktopIcons, setDesktopIcons] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [wallpaper, setWallpaper] = useState(() => localStorage.getItem('desktopWallpaper') || '');
+  const [showWallpaperModal, setShowWallpaperModal] = useState(false);
 
   const desktopRef = useRef(null);
 
@@ -32,7 +36,7 @@ const Desktop = ({ createWindow }) => {
         setLoading(true);
         setError(null);
         const response = await getDesktop(token);
-        
+
         if (response.success && response.data) {
           // Transform backend data to match frontend format
           const transformedIcons = response.data.desktopIcons?.map(icon => ({
@@ -67,7 +71,7 @@ const Desktop = ({ createWindow }) => {
             name: 'Documents',
             icon: '📁',
             x: 50,
-            y: 150,
+            y: 100,
             type: 'folder'
           },
           {
@@ -75,7 +79,7 @@ const Desktop = ({ createWindow }) => {
             name: 'Recycle Bin',
             icon: '🗑️',
             x: 50,
-            y: 250,
+            y: 150,
             type: 'trash'
           },
           {
@@ -83,7 +87,7 @@ const Desktop = ({ createWindow }) => {
             name: 'Settings',
             icon: '⚙️',
             x: 50,
-            y: 350,
+            y: 250,
             type: 'settings'
           },
           {
@@ -91,7 +95,7 @@ const Desktop = ({ createWindow }) => {
             name: 'Notepad',
             icon: '📝',
             x: 50,
-            y: 450,
+            y: 350,
             type: 'notepad'
           },
           {
@@ -99,7 +103,7 @@ const Desktop = ({ createWindow }) => {
             name: 'File Explorer',
             icon: '📂',
             x: 50,
-            y: 550,
+            y: 450,
             type: 'file-explorer'
           },
           {
@@ -107,7 +111,7 @@ const Desktop = ({ createWindow }) => {
             name: 'Browser',
             icon: '🌐',
             x: 50,
-            y: 650,
+            y: 550,
             type: 'browser'
           },
           {
@@ -115,10 +119,11 @@ const Desktop = ({ createWindow }) => {
             name: 'Terminal',
             icon: '🖳',
             x: 50,
-            y: 750,
+            y: 650,
             type: 'terminal'
           }
         ]);
+
       } finally {
         setLoading(false);
       }
@@ -140,7 +145,7 @@ const Desktop = ({ createWindow }) => {
 
   const handleFileOpen = (fileEvent) => {
     const { filePath, fileContent, fileType } = fileEvent;
-    
+
     // Create a new Notepad window with the file content
     createWindow({
       title: `${filePath.split('/').pop()} - Notepad`,
@@ -166,8 +171,8 @@ const Desktop = ({ createWindow }) => {
 
   const handleIconMove = async (id, newX, newY) => {
     // Update local state immediately for responsive UI
-    setDesktopIcons(prev => 
-      prev.map(icon => 
+    setDesktopIcons(prev =>
+      prev.map(icon =>
         icon.id === id ? { ...icon, x: newX, y: newY } : icon
       )
     );
@@ -191,7 +196,7 @@ const Desktop = ({ createWindow }) => {
   const handleIconDoubleClick = (icon) => {
     console.log('handleIconDoubleClick called with icon:', icon);
     console.log('Icon type:', icon.type);
-    
+
     switch (icon.type) {
       case 'notepad':
         console.log('Opening Notepad');
@@ -266,8 +271,21 @@ const Desktop = ({ createWindow }) => {
     }
   };
 
+  const handleWallpaperChange = (url) => {
+    setWallpaper(url);
+    if (url) {
+      localStorage.setItem('desktopWallpaper', url);
+    } else {
+      localStorage.removeItem('desktopWallpaper');
+    }
+    setShowWallpaperModal(false);
+  };
+
   const handleContextMenuAction = async (action) => {
     switch (action) {
+      case 'change-wallpaper':
+        setShowWallpaperModal(true);
+        break;
       case 'new-folder': {
         const newFolder = {
           id: Date.now(),
@@ -277,10 +295,10 @@ const Desktop = ({ createWindow }) => {
           y: Math.random() * 200 + 50,
           type: 'folder'
         };
-        
+
         const updatedIcons = [...desktopIcons, newFolder];
         setDesktopIcons(updatedIcons);
-        
+
         // Persist to backend if token is available
         if (token) {
           try {
@@ -291,7 +309,7 @@ const Desktop = ({ createWindow }) => {
               position: { x: icon.x, y: icon.y },
               visible: icon.visible !== false
             }));
-            
+
             await updateDesktopIcons(backendIcons, token);
           } catch (err) {
             console.error('Error updating desktop icons:', err);
@@ -338,14 +356,22 @@ const Desktop = ({ createWindow }) => {
   }, []);
 
   return (
-    <div 
+    <div
       ref={desktopRef}
       className="desktop"
       onContextMenu={handleContextMenu}
     >
       {/* Desktop Background */}
-      <div className="desktop-background"></div>
-      
+      <div
+        className="desktop-background"
+        style={wallpaper ? {
+          backgroundImage: `url(${wallpaper})`,
+          backgroundSize: 'cover',
+          backgroundPosition: 'center',
+          backgroundRepeat: 'no-repeat'
+        } : {}}
+      ></div>
+
       {/* Loading State */}
       {loading && (
         <div className="desktop-loading">
@@ -353,7 +379,7 @@ const Desktop = ({ createWindow }) => {
           <p>Loading desktop...</p>
         </div>
       )}
-      
+
       {/* Error State */}
       {error && !loading && (
         <div className="desktop-error">
@@ -361,7 +387,7 @@ const Desktop = ({ createWindow }) => {
           <button onClick={() => window.location.reload()}>Retry</button>
         </div>
       )}
-      
+
       {/* Desktop Icons */}
       {!loading && !error && desktopIcons.map(icon => (
         <DesktopIcon
@@ -372,7 +398,7 @@ const Desktop = ({ createWindow }) => {
           onContextMenu={handleIconContextMenu}
         />
       ))}
-      
+
       {/* Icon Context Menu */}
       {iconContextMenu.visible && (
         <ContextMenu
@@ -382,13 +408,22 @@ const Desktop = ({ createWindow }) => {
           menuType="icon"
         />
       )}
-      
+
       {/* Desktop Context Menu */}
       {contextMenu.visible && (
         <ContextMenu
           x={contextMenu.x}
           y={contextMenu.y}
           onAction={handleContextMenuAction}
+        />
+      )}
+
+      {/* Wallpaper Modal */}
+      {showWallpaperModal && (
+        <WallpaperModal
+          currentWallpaper={wallpaper}
+          onWallpaperChange={handleWallpaperChange}
+          onClose={() => setShowWallpaperModal(false)}
         />
       )}
     </div>

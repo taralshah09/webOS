@@ -126,3 +126,39 @@
 .context-menu {
   animation: contextMenuFadeIn 0.15s ease-out;
 } 
+
+/* Add this to your existing ContextMenu.css file */
+
+.context-menu-separator {
+  height: 1px;
+  background-color: var(--color-border, #333);
+  margin: 4px 8px;
+  opacity: 0.5;
+}
+
+/* Additional styling for wallpaper menu items */
+.context-menu-item-content:hover {
+  background-color: var(--color-accent, #007acc);
+  color: var(--color-text, #ffffff);
+}
+
+/* Highlight wallpaper-related menu items */
+.context-menu-item-content:has(.context-menu-icon:is([title="🖼️"], [title="🎨"])) {
+  position: relative;
+}
+
+.context-menu-item-content:has(.context-menu-icon:is([title="🖼️"], [title="🎨"])):hover {
+  background: linear-gradient(135deg, var(--color-accent, #007acc), var(--color-accent-hover, #005a9e));
+}
+
+/* Make wallpaper icons slightly larger */
+.context-menu-item-content .context-menu-icon {
+  display: inline-block;
+  width: 20px;
+  text-align: center;
+}
+
+.context-menu-item-content:hover .context-menu-icon {
+  transform: scale(1.1);
+  transition: transform 0.2s ease;
+}
