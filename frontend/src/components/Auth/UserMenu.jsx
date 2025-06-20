@@ -35,7 +35,7 @@ const UserMenu = () => {
   return (
     <div className="user-menu" ref={menuRef}>
       <img
-        src={user.avatar}
+        src={"https://tinyurl.com/mr2mpjsk"}
         alt={user.username}
         className="user-avatar"
         onClick={handleToggle}

@@ -1,0 +1,433 @@
+/* Terminal.css */
+.terminal-container {
+    height: 100%;
+    width: 100%;
+    background: #0c0c0c;
+    color: #00ff00;
+    font-family: 'Consolas', 'Monaco', 'Lucida Console', 'Liberation Mono', 'DejaVu Sans Mono', 'Bitstream Vera Sans Mono', 'Courier New', monospace;
+    font-size: 14px;
+    line-height: 1.4;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    border-radius: 8px;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
+  }
+  
+  /* Terminal Header */
+  .terminal-header {
+    background: #1e1e1e;
+    border-bottom: 1px solid #333;
+    padding: 8px 16px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-shrink: 0;
+  }
+  
+  .terminal-title {
+    color: #ffffff;
+    font-size: 12px;
+    font-weight: 500;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  
+  .terminal-icon {
+    font-size: 14px;
+  }
+  
+  .terminal-controls {
+    display: flex;
+    gap: 8px;
+  }
+  
+  .terminal-control-btn {
+    width: 20px;
+    height: 20px;
+    border: none;
+    border-radius: 50%;
+    font-size: 10px;
+    font-weight: bold;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s ease;
+  }
+  
+  .terminal-control-btn.minimize {
+    background: #ffbd2e;
+    color: #000;
+  }
+  
+  .terminal-control-btn.maximize {
+    background: #28ca42;
+    color: #000;
+  }
+  
+  .terminal-control-btn.close {
+    background: #ff5f56;
+    color: #000;
+  }
+  
+  .terminal-control-btn:hover {
+    transform: scale(1.1);
+    opacity: 0.8;
+  }
+  
+  /* Terminal Output Area */
+  .terminal-output {
+    flex: 1;
+    padding: 16px;
+    overflow-y: auto;
+    overflow-x: hidden;
+    background: #0c0c0c;
+    scrollbar-width: thin;
+    scrollbar-color: #00ff00 #1e1e1e;
+  }
+  
+  .terminal-output::-webkit-scrollbar {
+    width: 8px;
+  }
+  
+  .terminal-output::-webkit-scrollbar-track {
+    background: #1e1e1e;
+  }
+  
+  .terminal-output::-webkit-scrollbar-thumb {
+    background: #00ff00;
+    border-radius: 4px;
+  }
+  
+  .terminal-output::-webkit-scrollbar-thumb:hover {
+    background: #00cc00;
+  }
+  
+  .terminal-entry {
+    margin-bottom: 8px;
+  }
+  
+  .terminal-input-line {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 4px;
+  }
+  
+  .terminal-prompt {
+    color: #00ff00;
+    font-weight: bold;
+    user-select: none;
+  }
+  
+  .terminal-prompt.current {
+    animation: pulse 2s infinite;
+  }
+  
+  @keyframes pulse {
+    0%, 50% { opacity: 1; }
+    51%, 100% { opacity: 0.7; }
+  }
+  
+  .terminal-command {
+    color: #ffffff;
+    word-break: break-all;
+  }
+  
+  .terminal-timestamp {
+    color: #666;
+    font-size: 11px;
+    margin-left: auto;
+  }
+  
+  .terminal-output-text {
+    color: #cccccc;
+    white-space: pre-wrap;
+    word-wrap: break-word;
+    margin-left: 0;
+    padding: 4px 0;
+    line-height: 1.6;
+  }
+  
+  .terminal-output-text.system {
+    color: #00ccff;
+    font-style: italic;
+    border-left: 3px solid #00ccff;
+    padding-left: 12px;
+    margin: 8px 0;
+    background: rgba(0, 204, 255, 0.05);
+    border-radius: 4px;
+  }
+  
+  /* Terminal Input Container */
+  .terminal-input-container {
+    display: flex;
+    align-items: center;
+    padding: 12px 16px;
+    background: #0c0c0c;
+    border-top: 1px solid #333;
+    position: relative;
+    gap: 8px;
+  }
+  
+  .terminal-input-wrapper {
+    flex: 1;
+    position: relative;
+    height: 20px;
+  }
+  
+  .terminal-input-measure {
+    color: transparent;
+    font-family: inherit;
+    font-size: inherit;
+    white-space: pre;
+    pointer-events: none;
+    user-select: none;
+    position: absolute;
+    left: 0;
+    top: 0;
+    z-index: 0;
+  }
+  
+  .terminal-input {
+    background: transparent;
+    border: none;
+    outline: none;
+    color: #00ff00;
+    font-family: inherit;
+    font-size: inherit;
+    width: 100%;
+    height: 100%;
+    caret-color: transparent; /* Hide default caret */
+    position: absolute;
+    left: 0;
+    top: 0;
+    z-index: 1;
+  }
+  
+  .terminal-input.typing {
+    color: #ffffff;
+  }
+  
+  .terminal-cursor {
+    width: 2px;
+    height: 16px;
+    background: #00ff00;
+    position: absolute;
+    top: 2px;
+    z-index: 2;
+    animation: blink 1s infinite;
+    transition: left 0.1s ease;
+  }
+  
+  /* Remove the old pseudo-element rule */
+  
+  @keyframes blink {
+    0%, 50% { opacity: 1; }
+    51%, 100% { opacity: 0; }
+  }
+  
+  /* Terminal Status Bar */
+  .terminal-status {
+    background: #1e1e1e;
+    border-top: 1px solid #333;
+    padding: 6px 16px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 11px;
+    color: #666;
+    flex-shrink: 0;
+  }
+  
+  .status-info {
+    display: flex;
+    gap: 16px;
+  }
+  
+  .status-help {
+    font-style: italic;
+  }
+  
+  /* Terminal Themes */
+  .terminal-container.theme-matrix {
+    background: #000000;
+    color: #00ff41;
+  }
+  
+  .terminal-container.theme-matrix .terminal-prompt {
+    color: #00ff41;
+  }
+  
+  .terminal-container.theme-matrix .terminal-cursor {
+    background: #00ff41;
+  }
+  
+  .terminal-container.theme-amber {
+    background: #1a1a0e;
+    color: #ffb000;
+  }
+  
+  .terminal-container.theme-amber .terminal-prompt {
+    color: #ffb000;
+  }
+  
+  .terminal-container.theme-amber .terminal-cursor {
+    background: #ffb000;
+  }
+  
+  .terminal-container.theme-blue {
+    background: #0a0a1a;
+    color: #4a9eff;
+  }
+  
+  .terminal-container.theme-blue .terminal-prompt {
+    color: #4a9eff;
+  }
+  
+  .terminal-container.theme-blue .terminal-cursor {
+    background: #4a9eff;
+  }
+  
+  /* Error and Success Messages */
+  .terminal-output-text:has-text("Error") {
+    color: #ff4444;
+  }
+  
+  .terminal-output-text:has-text("Created") {
+    color: #44ff44;
+  }
+  
+  .terminal-output-text:has-text("Removed") {
+    color: #ffaa44;
+  }
+  
+  /* Help Command Styling */
+  .terminal-output-text:contains("Available commands") {
+    color: #00ccff;
+  }
+  
+  /* Command History Navigation Indicator */
+  .terminal-input-container.history-active {
+    background: rgba(0, 255, 0, 0.05);
+    border-top-color: #00ff00;
+  }
+  
+  .terminal-input-container.history-active .terminal-prompt {
+    color: #ffff00;
+  }
+  
+  /* Auto-completion Suggestions (for future implementation) */
+  .terminal-suggestions {
+    position: absolute;
+    bottom: 100%;
+    left: 16px;
+    right: 16px;
+    background: #1e1e1e;
+    border: 1px solid #00ff00;
+    border-radius: 4px;
+    max-height: 150px;
+    overflow-y: auto;
+    z-index: 100;
+    display: none;
+  }
+  
+  .terminal-suggestion {
+    padding: 8px 12px;
+    color: #cccccc;
+    cursor: pointer;
+    border-bottom: 1px solid #333;
+  }
+  
+  .terminal-suggestion:hover,
+  .terminal-suggestion.selected {
+    background: #00ff00;
+    color: #000000;
+  }
+  
+  .terminal-suggestion:last-child {
+    border-bottom: none;
+  }
+  
+  /* Responsive Design */
+  @media (max-width: 768px) {
+    .terminal-container {
+      font-size: 12px;
+    }
+    
+    .terminal-output,
+    .terminal-input-container {
+      padding: 12px;
+    }
+    
+    .terminal-status {
+      flex-direction: column;
+      gap: 4px;
+      padding: 8px 12px;
+    }
+    
+    .status-help {
+      display: none;
+    }
+  }
+  
+  @media (max-width: 480px) {
+    .terminal-container {
+      font-size: 11px;
+    }
+    
+    .terminal-header {
+      padding: 6px 12px;
+    }
+    
+    .terminal-title {
+      font-size: 11px;
+    }
+    
+    .terminal-control-btn {
+      width: 16px;
+      height: 16px;
+      font-size: 8px;
+    }
+    
+    .terminal-timestamp {
+      display: none;
+    }
+  }
+  
+  /* Focus Management */
+  .terminal-container:focus-within .terminal-cursor {
+    animation: blink 1s infinite;
+  }
+  
+  .terminal-container:not(:focus-within) .terminal-cursor {
+    opacity: 0.5;
+    animation: none;
+  }
+  
+  /* Selection Colors */
+  .terminal-output::selection,
+  .terminal-input::selection {
+    background: #00ff00;
+    color: #000000;
+  }
+  
+  /* Smooth Scrolling */
+  .terminal-output {
+    scroll-behavior: smooth;
+  }
+  
+  /* Loading Animation for Commands */
+  @keyframes dots {
+    0%, 20% { content: '.'; }
+    40% { content: '..'; }
+    60%, 100% { content: '...'; }
+  }
+  
+  .terminal-loading::after {
+    content: '';
+    animation: dots 1.5s infinite;
+    color: #00ff00;
+  }
