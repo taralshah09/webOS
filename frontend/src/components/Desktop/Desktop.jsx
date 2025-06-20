@@ -11,6 +11,7 @@ import { getDesktop, updateIconPosition, updateDesktopIcons } from '../../servic
 import { useAuth } from '../../contexts/AuthContext';
 import '../../styles/theme.css';
 import WallpaperModal from './WallpaperModal';
+import { FileSystemProvider } from '../../contexts/FileSystemContext';
 
 const Desktop = ({ createWindow }) => {
   const { token } = useAuth();
@@ -356,77 +357,80 @@ const Desktop = ({ createWindow }) => {
   }, []);
 
   return (
-    <div
-      ref={desktopRef}
-      className="desktop"
-      onContextMenu={handleContextMenu}
-    >
-      {/* Desktop Background */}
+    <FileSystemProvider>
+
       <div
-        className="desktop-background"
-        style={wallpaper ? {
-          backgroundImage: `url(${wallpaper})`,
-          backgroundSize: 'cover',
-          backgroundPosition: 'center',
-          backgroundRepeat: 'no-repeat'
-        } : {}}
-      ></div>
+        ref={desktopRef}
+        className="desktop"
+        onContextMenu={handleContextMenu}
+      >
+        {/* Desktop Background */}
+        <div
+          className="desktop-background"
+          style={wallpaper ? {
+            backgroundImage: `url(${wallpaper})`,
+            backgroundSize: 'cover',
+            backgroundPosition: 'center',
+            backgroundRepeat: 'no-repeat'
+          } : {}}
+        ></div>
 
-      {/* Loading State */}
-      {loading && (
-        <div className="desktop-loading">
-          <div className="loading-spinner"></div>
-          <p>Loading desktop...</p>
-        </div>
-      )}
+        {/* Loading State */}
+        {loading && (
+          <div className="desktop-loading">
+            <div className="loading-spinner"></div>
+            <p>Loading desktop...</p>
+          </div>
+        )}
 
-      {/* Error State */}
-      {error && !loading && (
-        <div className="desktop-error">
-          <p>Error loading desktop: {error}</p>
-          <button onClick={() => window.location.reload()}>Retry</button>
-        </div>
-      )}
+        {/* Error State */}
+        {error && !loading && (
+          <div className="desktop-error">
+            <p>Error loading desktop: {error}</p>
+            <button onClick={() => window.location.reload()}>Retry</button>
+          </div>
+        )}
 
-      {/* Desktop Icons */}
-      {!loading && !error && desktopIcons.map(icon => (
-        <DesktopIcon
-          key={icon.id}
-          icon={icon}
-          onMove={handleIconMove}
-          onDoubleClick={() => handleIconDoubleClick(icon)}
-          onContextMenu={handleIconContextMenu}
-        />
-      ))}
+        {/* Desktop Icons */}
+        {!loading && !error && desktopIcons.map(icon => (
+          <DesktopIcon
+            key={icon.id}
+            icon={icon}
+            onMove={handleIconMove}
+            onDoubleClick={() => handleIconDoubleClick(icon)}
+            onContextMenu={handleIconContextMenu}
+          />
+        ))}
 
-      {/* Icon Context Menu */}
-      {iconContextMenu.visible && (
-        <ContextMenu
-          x={iconContextMenu.x}
-          y={iconContextMenu.y}
-          onAction={handleIconContextMenuAction}
-          menuType="icon"
-        />
-      )}
+        {/* Icon Context Menu */}
+        {iconContextMenu.visible && (
+          <ContextMenu
+            x={iconContextMenu.x}
+            y={iconContextMenu.y}
+            onAction={handleIconContextMenuAction}
+            menuType="icon"
+          />
+        )}
 
-      {/* Desktop Context Menu */}
-      {contextMenu.visible && (
-        <ContextMenu
-          x={contextMenu.x}
-          y={contextMenu.y}
-          onAction={handleContextMenuAction}
-        />
-      )}
+        {/* Desktop Context Menu */}
+        {contextMenu.visible && (
+          <ContextMenu
+            x={contextMenu.x}
+            y={contextMenu.y}
+            onAction={handleContextMenuAction}
+          />
+        )}
 
-      {/* Wallpaper Modal */}
-      {showWallpaperModal && (
-        <WallpaperModal
-          currentWallpaper={wallpaper}
-          onWallpaperChange={handleWallpaperChange}
-          onClose={() => setShowWallpaperModal(false)}
-        />
-      )}
-    </div>
+        {/* Wallpaper Modal */}
+        {showWallpaperModal && (
+          <WallpaperModal
+            currentWallpaper={wallpaper}
+            onWallpaperChange={handleWallpaperChange}
+            onClose={() => setShowWallpaperModal(false)}
+          />
+        )}
+      </div>
+    </FileSystemProvider>
   );
 };
 

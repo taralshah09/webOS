@@ -11,6 +11,8 @@ const Terminal = () => {
     createFolder,
     createFile,
     deleteItems,
+    pathExists,
+    getItemInfo
   } = useFileSystem();
 
   const [history, setHistory] = useState([]);
@@ -93,7 +95,8 @@ Navigation:
             return contents.map(item => {
               const icon = item.type === 'folder' ? '📁' : '📄';
               const name = item.name + (item.type === 'folder' ? '/' : '');
-              return `${icon} ${name}`;
+              const size = item.type === 'file' ? ` (${item.size} bytes)` : '';
+              return `${icon} ${name}${size}`;
             }).join('\n');
           } catch (error) {
             return `ls: cannot access '${targetPath}': No such file or directory`;
@@ -122,10 +125,15 @@ Navigation:
           const absolutePath = target.startsWith('/') ? target : 
             (cwd === '/' ? `/${target}` : `${cwd}/${target}`);
           
-          if (fileSystem[absolutePath] && fileSystem[absolutePath].type === 'folder') {
-            setCurrentPath(absolutePath);
-            setCwd(absolutePath);
-            return `Changed to ${absolutePath}`;
+          if (pathExists(absolutePath)) {
+            const itemInfo = getItemInfo(absolutePath);
+            if (itemInfo && itemInfo.type === 'folder') {
+              setCurrentPath(absolutePath);
+              setCwd(absolutePath);
+              return `Changed to ${absolutePath}`;
+            } else {
+              return `cd: not a directory: ${target}`;
+            }
           } else {
             return `cd: no such directory: ${target}`;
           }
@@ -141,8 +149,8 @@ Navigation:
           }
           
           try {
-            createFolder(args[0]);
-            return `Created folder: ${args[0]}`;
+            const newPath = createFolder(args[0], cwd);
+            return `Created folder: ${args[0]} at ${newPath}`;
           } catch (error) {
             return `mkdir: cannot create directory '${args[0]}': ${error.message}`;
           }
@@ -154,8 +162,8 @@ Navigation:
           }
           
           try {
-            createFile(args[0]);
-            return `Created file: ${args[0]}`;
+            const newPath = createFile(args[0], '', cwd);
+            return `Created file: ${args[0]} at ${newPath}`;
           } catch (error) {
             return `touch: cannot create file '${args[0]}': ${error.message}`;
           }
@@ -170,7 +178,7 @@ Navigation:
           const absolutePath = target.startsWith('/') ? target : 
             (cwd === '/' ? `/${target}` : `${cwd}/${target}`);
           
-          if (!fileSystem[absolutePath]) {
+          if (!pathExists(absolutePath)) {
             return `rm: cannot remove '${target}': No such file or directory`;
           }
           
@@ -208,11 +216,77 @@ Navigation:
           return new Date().toString();
         }
 
-        case 'uptime': {
-          const uptime = Math.floor(performance.now() / 1000);
-          const minutes = Math.floor(uptime / 60);
-          const seconds = uptime % 60;
-          return `System uptime: ${minutes}m ${seconds}s`;
+        case 'cat': {
+          if (!args[0]) {
+            return 'cat: missing operand\nUsage: cat <file_name>';
+          }
+          
+          const target = args[0];
+          const absolutePath = target.startsWith('/') ? target : 
+            (cwd === '/' ? `/${target}` : `${cwd}/${target}`);
+          
+          if (!pathExists(absolutePath)) {
+            return `cat: ${target}: No such file or directory`;
+          }
+          
+          const itemInfo = getItemInfo(absolutePath);
+          if (itemInfo.type === 'folder') {
+            return `cat: ${target}: Is a directory`;
+          }
+          
+          return itemInfo.content || '[Empty file]';
+        }
+
+        case 'find': {
+          if (!args[0]) {
+            return 'find: missing operand\nUsage: find <name_pattern>';
+          }
+          
+          const pattern = args[0].toLowerCase();
+          const results = [];
+          
+          const searchRecursively = (path) => {
+            const contents = getCurrentDirectoryContents(path);
+            contents.forEach(item => {
+              if (item.name.toLowerCase().includes(pattern)) {
+                results.push(item.path);
+              }
+              if (item.type === 'folder') {
+                searchRecursively(item.path);
+              }
+            });
+          };
+          
+          searchRecursively('/');
+          
+          if (results.length === 0) {
+            return `find: no files or directories matching '${pattern}' found`;
+          }
+          
+          return results.join('\n');
+        }
+
+        case 'tree': {
+          const targetPath = args[0] || cwd;
+          if (!pathExists(targetPath)) {
+            return `tree: ${targetPath}: No such directory`;
+          }
+          const buildTree = (path, prefix = '', isLast = true) => {
+            const itemInfo = getItemInfo(path);
+            if (!itemInfo) return '';
+            let result = prefix + (isLast ? '└── ' : '├── ') + itemInfo.name + '\n';
+            if (itemInfo.type === 'folder') {
+              const contents = getCurrentDirectoryContents(path);
+              contents.forEach((child, index) => {
+                const isLastChild = index === contents.length - 1;
+                const newPrefix = prefix + (isLast ? '    ' : '│   ');
+                result += buildTree(child.path, newPrefix, isLastChild);
+              });
+            }
+            return result;
+          };
+          const itemInfo = getItemInfo(targetPath);
+          return itemInfo.name + '\n' + buildTree(targetPath).slice(0, -1);
         }
 
         default: {
@@ -328,32 +402,6 @@ Navigation:
 
   return (
     <div className="terminal-container">
-      {/* <div className="terminal-header">
-        <div className="terminal-title">
-          <span className="terminal-icon">💻</span>
-          Terminal - {cwd}
-        </div>
-        <div className="terminal-controls">
-          <button 
-            className="terminal-control-btn minimize"
-            title="Minimize"
-          >
-            ─
-          </button>
-          <button 
-            className="terminal-control-btn maximize"
-            title="Maximize"
-          >
-            □
-          </button>
-          <button 
-            className="terminal-control-btn close"
-            title="Close"
-          >
-            ✕
-          </button>
-        </div>
-      </div> */}
 
       <div 
         ref={outputRef}
