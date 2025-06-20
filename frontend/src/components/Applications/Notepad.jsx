@@ -1,9 +1,11 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import Editor from '@monaco-editor/react';
 import fileService from '../../services/fileService';
+import { useFileSystem } from '../../contexts/FileSystemContext';
 import './Notepad.css';
 
-const Notepad = ({ initialContent, initialFilePath, initialLanguage }) => {
+const Notepad = ({ initialContent, initialFilePath, initialLanguage, onTitleChange }) => {
+  const fileSystemContext = useFileSystem();
   const [content, setContent] = useState(initialContent || `Welcome to Web OS Notepad!
 
 This is a professional text editor powered by Monaco Editor - the same editor used in Visual Studio Code.
@@ -14,9 +16,12 @@ Features:
 • Auto-completion and IntelliSense
 • Multiple themes and customization options
 • Professional editing experience
+• Integrated file system save/load
 
 You can:  
 - Type and edit text with advanced features
+- Save files directly to the file system
+- Open files from File Explorer
 - Resize this window
 - Move it around the desktop
 - Minimize, maximize, and close it
@@ -29,9 +34,25 @@ Try changing the language mode in the bottom status bar!`);
   const [fontSize, setFontSize] = useState(14);
   const [currentFilePath, setCurrentFilePath] = useState(initialFilePath || null);
   const [isModified, setIsModified] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+  const [saveStatus, setSaveStatus] = useState('');
   const [isMounted, setIsMounted] = useState(true);
   const editorRef = useRef(null);
   const unregistersRef = useRef([]);
+
+  // Set file service context on mount
+  useEffect(() => {
+    fileService.setFileSystemContext(fileSystemContext);
+  }, [fileSystemContext]);
+
+  // Update window title when file changes
+  useEffect(() => {
+    if (onTitleChange) {
+      const fileName = currentFilePath ? currentFilePath.split('/').pop() : 'Untitled';
+      const modified = isModified ? '● ' : '';
+      onTitleChange(`${modified}${fileName} - Notepad`);
+    }
+  }, [currentFilePath, isModified, onTitleChange]);
 
   // Set initial state if props are provided
   useEffect(() => {
@@ -48,12 +69,12 @@ Try changing the language mode in the bottom status bar!`);
 
   // Stable callback for opening files
   const openFileInEditor = useCallback((filePath, fileContent, fileType) => {
-    // Check if component is still mounted
     if (!isMounted) return;
     
     setContent(fileContent || '');
     setCurrentFilePath(filePath);
     setIsModified(false);
+    setSaveStatus('');
     
     // Set language based on file type
     const languageMap = {
@@ -101,14 +122,12 @@ Try changing the language mode in the bottom status bar!`);
         unregisters.push(fileService.registerFileOpener(type, openFileInEditor));
       });
 
-      // Store unregisters in ref for cleanup
       unregistersRef.current = unregisters;
     } catch (error) {
       console.warn('Error registering file openers:', error);
     }
 
     return () => {
-      // Cleanup all file service registrations
       unregistersRef.current.forEach(unregister => {
         try {
           if (typeof unregister === 'function') {
@@ -122,12 +141,36 @@ Try changing the language mode in the bottom status bar!`);
     };
   }, [openFileInEditor]);
 
+  // Listen for file service events
+  useEffect(() => {
+    const unsubscribe = fileService.addListener((event) => {
+      if (!isMounted) return;
+
+      switch (event.type) {
+        case 'SAVE_FILE_SUCCESS':
+          if (event.filePath === currentFilePath) {
+            setIsModified(false);
+            setSaveStatus('✅ Saved successfully');
+            setTimeout(() => setSaveStatus(''), 3000);
+          }
+          break;
+        case 'SAVE_FILE_ERROR':
+          if (event.filePath === currentFilePath) {
+            setSaveStatus(`❌ Save failed: ${event.error}`);
+            setTimeout(() => setSaveStatus(''), 5000);
+          }
+          break;
+      }
+    });
+
+    return unsubscribe;
+  }, [isMounted, currentFilePath]);
+
   // Cleanup on unmount
   useEffect(() => {
     return () => {
       setIsMounted(false);
       
-      // Dispose Monaco editor
       if (editorRef.current) {
         try {
           editorRef.current.dispose();
@@ -141,7 +184,15 @@ Try changing the language mode in the bottom status bar!`);
   const handleEditorDidMount = useCallback((editor) => {
     editorRef.current = editor;
     
-    // Add error handling for editor events
+    // Add keyboard shortcuts
+    editor.addCommand(window.monaco.KeyMod.CtrlCmd | window.monaco.KeyCode.KeyS, () => {
+      handleSave();
+    });
+
+    editor.addCommand(window.monaco.KeyMod.CtrlCmd | window.monaco.KeyMod.Shift | window.monaco.KeyCode.KeyS, () => {
+      handleSaveAs();
+    });
+
     try {
       editor.onDidDispose(() => {
         editorRef.current = null;
@@ -155,10 +206,9 @@ Try changing the language mode in the bottom status bar!`);
     if (!isMounted) return;
     
     setContent(value || '');
-    if (currentFilePath) {
-      setIsModified(true);
-    }
-  }, [isMounted, currentFilePath]);
+    setIsModified(true);
+    setSaveStatus('');
+  }, [isMounted]);
 
   const handleLanguageChange = useCallback((e) => {
     if (!isMounted) return;
@@ -178,66 +228,112 @@ Try changing the language mode in the bottom status bar!`);
   const handleNewFile = useCallback(() => {
     if (!isMounted) return;
     
+    if (isModified) {
+      const save = window.confirm('Do you want to save the current file before creating a new one?');
+      if (save) {
+        handleSave();
+      }
+    }
+    
     setContent('');
     setCurrentFilePath(null);
     setIsModified(false);
     setLanguage('plaintext');
-  }, [isMounted]);
+    setSaveStatus('');
+  }, [isMounted, isModified]);
 
-  const handleSave = useCallback(() => {
+  const handleSave = useCallback(async () => {
     if (!isMounted) return;
     
     if (currentFilePath) {
-      // Save to the file system (this would need to be integrated with the file system)
-      console.log('Saving to:', currentFilePath, content);
-      setIsModified(false);
-    } else {
-      // Save as new file
       try {
-        const blob = new Blob([content], { type: 'text/plain' });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = 'document.txt';
-        a.click();
+        setIsSaving(true);
+        setSaveStatus('💾 Saving...');
         
-        // Clean up the URL after a short delay
-        setTimeout(() => {
-          URL.revokeObjectURL(url);
-        }, 100);
+        await fileService.saveFile(currentFilePath, content);
+        // Status will be updated by the listener
       } catch (error) {
         console.error('Error saving file:', error);
+        setSaveStatus(`❌ Save failed: ${error.message}`);
+        setTimeout(() => setSaveStatus(''), 5000);
+      } finally {
+        setIsSaving(false);
       }
+    } else {
+      handleSaveAs();
     }
   }, [isMounted, currentFilePath, content]);
 
-  const handleSaveAs = useCallback(() => {
+  const handleSaveAs = useCallback(async () => {
     if (!isMounted) return;
     
+    const fileName = prompt('Enter file name:', currentFilePath ? currentFilePath.split('/').pop() : 'document.txt');
+    if (!fileName || !fileName.trim()) return;
+    
     try {
-      const blob = new Blob([content], { type: 'text/plain' });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = currentFilePath ? currentFilePath.split('/').pop() : 'document.txt';
-      a.click();
+      setIsSaving(true);
+      setSaveStatus('💾 Saving...');
       
-      // Clean up the URL after a short delay
-      setTimeout(() => {
-        URL.revokeObjectURL(url);
-      }, 100);
+      const dirPath = currentFilePath ? currentFilePath.split('/').slice(0, -1).join('/') || '/' : '/';
+      const newFilePath = `${dirPath}/${fileName.trim()}`.replace('//', '/');
+      
+      await fileService.saveFile(newFilePath, content);
+      setCurrentFilePath(newFilePath);
+      
+      // Determine language from file extension
+      const extension = fileName.split('.').pop()?.toLowerCase();
+      const languageMap = {
+        'js': 'javascript',
+        'jsx': 'javascript',
+        'ts': 'typescript',
+        'tsx': 'typescript',
+        'html': 'html',
+        'css': 'css',
+        'json': 'json',
+        'md': 'markdown',
+        'py': 'python',
+        'java': 'java',
+        'cpp': 'cpp',
+        'c': 'c',
+        'php': 'php',
+        'rb': 'ruby',
+        'go': 'go',
+        'rs': 'rust',
+        'swift': 'swift',
+        'kt': 'kotlin',
+        'sql': 'sql',
+        'xml': 'xml',
+        'yaml': 'yaml',
+        'yml': 'yaml'
+      };
+      
+      if (languageMap[extension]) {
+        setLanguage(languageMap[extension]);
+      }
+      
     } catch (error) {
       console.error('Error saving file as:', error);
+      setSaveStatus(`❌ Save failed: ${error.message}`);
+      setTimeout(() => setSaveStatus(''), 5000);
+    } finally {
+      setIsSaving(false);
     }
   }, [isMounted, content, currentFilePath]);
 
   const handleOpen = useCallback(() => {
     if (!isMounted) return;
     
+    if (isModified) {
+      const save = window.confirm('Do you want to save the current file before opening another?');
+      if (save) {
+        handleSave();
+      }
+    }
+    
     try {
       const input = document.createElement('input');
       input.type = 'file';
-      input.accept = '.txt,.js,.jsx,.ts,.tsx,.html,.css,.json,.md,.py,.java,.cpp,.c,.php,.rb,.go,.rs,.swift,.kt';
+      input.accept = '.txt,.js,.jsx,.ts,.tsx,.html,.css,.json,.md,.py,.java,.cpp,.c,.php,.rb,.go,.rs,.swift,.kt,.sql,.xml,.yaml,.yml';
       
       const handleFileChange = (e) => {
         const file = e.target.files[0];
@@ -265,7 +361,11 @@ Try changing the language mode in the bottom status bar!`);
               'go': 'go',
               'rs': 'rust',
               'swift': 'swift',
-              'kt': 'kotlin'
+              'kt': 'kotlin',
+              'sql': 'sql',
+              'xml': 'xml',
+              'yaml': 'yaml',
+              'yml': 'yaml'
             };
             
             openFileInEditor(file.name, e.target.result, languageMap[extension] || 'text');
@@ -278,15 +378,12 @@ Try changing the language mode in the bottom status bar!`);
           reader.readAsText(file);
         }
         
-        // Clean up the input element
         if (input.parentNode) {
           input.parentNode.removeChild(input);
         }
       };
       
       input.onchange = handleFileChange;
-      
-      // Add to DOM temporarily to trigger click
       input.style.display = 'none';
       document.body.appendChild(input);
       input.click();
@@ -294,7 +391,7 @@ Try changing the language mode in the bottom status bar!`);
     } catch (error) {
       console.error('Error opening file:', error);
     }
-  }, [isMounted, openFileInEditor]);
+  }, [isMounted, isModified, openFileInEditor, handleSave]);
 
   // Get current position safely
   const getCurrentPosition = useCallback(() => {
@@ -311,16 +408,21 @@ Try changing the language mode in the bottom status bar!`);
     <div className="notepad-app">
       <div className="notepad-toolbar">
         <div className="toolbar-section">
-          <button className="toolbar-button" onClick={handleNewFile}>
+          <button className="toolbar-button" onClick={handleNewFile} title="New File (Ctrl+N)">
             📄 New
           </button>
-          <button className="toolbar-button" onClick={handleOpen}>
+          <button className="toolbar-button" onClick={handleOpen} title="Open File (Ctrl+O)">
             📂 Open
           </button>
-          <button className="toolbar-button" onClick={handleSave}>
-            💾 Save
+          <button 
+            className="toolbar-button" 
+            onClick={handleSave} 
+            disabled={isSaving}
+            title="Save File (Ctrl+S)"
+          >
+            {isSaving ? '⏳' : '💾'} Save
           </button>
-          <button className="toolbar-button" onClick={handleSaveAs}>
+          <button className="toolbar-button" onClick={handleSaveAs} title="Save As (Ctrl+Shift+S)">
             💾 Save As
           </button>
         </div>
@@ -380,6 +482,12 @@ Try changing the language mode in the bottom status bar!`);
             <option value={24}>24px</option>
           </select>
         </div>
+
+        {saveStatus && (
+          <div className="toolbar-section">
+            <span className="save-status">{saveStatus}</span>
+          </div>
+        )}
       </div>
       
       <div className="notepad-editor-container">
@@ -457,7 +565,10 @@ Try changing the language mode in the bottom status bar!`);
           <span className="status-item">📁 {currentFilePath}</span>
         )}
         {isModified && (
-          <span className="status-item">● Modified</span>
+          <span className="status-item modified">● Modified</span>
+        )}
+        {isSaving && (
+          <span className="status-item saving">⏳ Saving...</span>
         )}
       </div>
     </div>

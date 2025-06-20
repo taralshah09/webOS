@@ -15,9 +15,11 @@ const FileExplorer = () => {
     getCurrentDirectoryContents,
     createFolder,
     createFile,
+    saveFile,
     deleteItems,
     renameItem,
-    getItemInfo
+    getItemInfo,
+    searchFiles
   } = useFileSystem();
 
   const [selectedItems, setSelectedItems] = useState([]);
@@ -25,27 +27,53 @@ const FileExplorer = () => {
   const [viewMode, setViewMode] = useState('grid'); // 'grid' or 'list'
   const [sortBy, setSortBy] = useState('name'); // 'name', 'type', 'size', 'date'
   const [sortOrder, setSortOrder] = useState('asc'); // 'asc' or 'desc'
+  const [searchQuery, setSearchQuery] = useState('');
+  const [searchResults, setSearchResults] = useState([]);
+  const [isSearching, setIsSearching] = useState(false);
 
-  // Listen for file opening events
+  // Listen for file service events
   useEffect(() => {
     const unsubscribe = fileService.addListener((event) => {
-      if (event.type === 'OPEN_FILE') {
-        handleFileOpen(event);
+      switch (event.type) {
+        case 'OPEN_FILE':
+          console.log('File opened via service:', event.filePath);
+          break;
+        case 'SAVE_FILE_SUCCESS':
+          console.log('File saved successfully:', event.filePath);
+          // Could refresh the file explorer view here
+          break;
+        case 'SAVE_FILE_ERROR':
+          console.error('File save error:', event.error);
+          break;
+        case 'FILE_CREATED':
+          console.log('New file created:', event.filePath);
+          break;
       }
     });
 
     return unsubscribe;
   }, []);
 
-  const handleFileOpen = (fileEvent) => {
-    const { filePath, fileContent, fileType } = fileEvent;
-    // File opening is handled by the fileService
-    console.log('File opened via service:', filePath);
-  };
+  // Search functionality
+  useEffect(() => {
+    if (searchQuery.trim()) {
+      setIsSearching(true);
+      const debounceSearch = setTimeout(() => {
+        const results = searchFiles(searchQuery);
+        setSearchResults(results);
+        setIsSearching(false);
+      }, 300);
+
+      return () => clearTimeout(debounceSearch);
+    } else {
+      setSearchResults([]);
+      setIsSearching(false);
+    }
+  }, [searchQuery, searchFiles]);
 
   // Get current directory contents with sorting
   const getCurrentDirectoryContentsSorted = useCallback(() => {
-    const contents = getCurrentDirectoryContents(currentPath);
+    const contents = searchQuery ? searchResults : getCurrentDirectoryContents(currentPath);
     
     return contents.sort((a, b) => {
       // Sort folders first, then files
@@ -63,7 +91,7 @@ const FileExplorer = () => {
           comparison = (a.extension || '').localeCompare(b.extension || '');
           break;
         case 'size':
-          comparison = a.size - b.size;
+          comparison = (a.size || 0) - (b.size || 0);
           break;
         case 'date':
           comparison = new Date(a.modified) - new Date(b.modified);
@@ -74,12 +102,13 @@ const FileExplorer = () => {
 
       return sortOrder === 'asc' ? comparison : -comparison;
     });
-  }, [getCurrentDirectoryContents, currentPath, sortBy, sortOrder]);
+  }, [getCurrentDirectoryContents, currentPath, sortBy, sortOrder, searchQuery, searchResults]);
 
   // Navigation functions
   const navigateTo = (path) => {
     setCurrentPath(path);
     setSelectedItems([]);
+    setSearchQuery(''); // Clear search when navigating
   };
 
   const navigateUp = () => {
@@ -88,28 +117,39 @@ const FileExplorer = () => {
     navigateTo(parentPath);
   };
 
-  // File operations with better error handling
-  const handleCreateFolder = useCallback((name) => {
+  // Enhanced file operations
+  const handleCreateFolder = useCallback(async (name) => {
     try {
-      createFolder(name, currentPath);
+      const newPath = createFolder(name, currentPath);
       console.log(`✅ Folder created: ${name} in ${currentPath}`);
+      return newPath;
     } catch (error) {
       console.error('❌ Error creating folder:', error);
       throw error;
     }
   }, [createFolder, currentPath]);
 
-  const handleCreateFile = useCallback((name, content = '') => {
+  const handleCreateFile = useCallback(async (name, content = '') => {
     try {
-      createFile(name, content, currentPath);
+      const newPath = createFile(name, content, currentPath);
       console.log(`✅ File created: ${name} in ${currentPath}`);
+      
+      // If it's a text-editable file, offer to open it
+      if (fileService.isFileEditable(newPath)) {
+        const openFile = window.confirm(`File created successfully! Would you like to open "${name}" in the text editor?`);
+        if (openFile) {
+          fileService.openFile(newPath, content, name.split('.').pop()?.toLowerCase() || 'text');
+        }
+      }
+      
+      return newPath;
     } catch (error) {
       console.error('❌ Error creating file:', error);
       throw error;
     }
   }, [createFile, currentPath]);
 
-  const handleDeleteItems = useCallback((paths) => {
+  const handleDeleteItems = useCallback(async (paths) => {
     try {
       deleteItems(paths);
       setSelectedItems([]); // Clear selection after deletion
@@ -120,7 +160,7 @@ const FileExplorer = () => {
     }
   }, [deleteItems]);
 
-  const handleRenameItem = useCallback((oldPath, newName) => {
+  const handleRenameItem = useCallback(async (oldPath, newName) => {
     try {
       const newPath = renameItem(oldPath, newName);
       
@@ -158,17 +198,37 @@ const FileExplorer = () => {
     return () => document.removeEventListener('click', handleClick);
   }, []);
 
-  // Handle file double-click
+  // Enhanced file double-click with better file type detection
   const handleFileDoubleClick = useCallback((item) => {
     if (item.type === 'folder') {
       navigateTo(item.path);
     } else {
-      // Open file using the file service
-      const fileContent = getItemInfo(item.path)?.content || '';
-      fileService.openFile(item.path, fileContent, item.extension);
-      console.log(`📂 Opening file: ${item.path}`);
+      // Get file content and open with appropriate application
+      const fileInfo = getItemInfo(item.path);
+      const fileContent = fileInfo?.content || '';
+      
+      // Check if it's an editable file type
+      if (fileService.isFileEditable(item.path)) {
+        fileService.openFile(item.path, fileContent, item.extension || 'text');
+        console.log(`📝 Opening editable file: ${item.path}`);
+      } else {
+        // For non-editable files, could open with different applications
+        console.log(`📂 Opening file: ${item.path} (type: ${item.extension})`);
+        // Could show a preview or download the file
+        alert(`File type ".${item.extension}" is not directly editable. File opened in preview mode.`);
+      }
     }
   }, [navigateTo, getItemInfo]);
+
+  // Handle edit file action from context menu
+  const handleEditFile = useCallback((filePath) => {
+    const fileInfo = getItemInfo(filePath);
+    if (fileInfo && fileService.isFileEditable(filePath)) {
+      fileService.openFile(filePath, fileInfo.content || '', fileInfo.extension || 'text');
+    } else {
+      alert('This file type cannot be edited in the text editor.');
+    }
+  }, [getItemInfo]);
 
   const currentContents = getCurrentDirectoryContentsSorted();
 
@@ -189,6 +249,9 @@ const FileExplorer = () => {
         onSortByChange={setSortBy}
         sortOrder={sortOrder}
         onSortOrderChange={setSortOrder}
+        searchQuery={searchQuery}
+        onSearchQueryChange={setSearchQuery}
+        isSearching={isSearching}
       />
       
       <div className="file-explorer-content">
@@ -202,6 +265,15 @@ const FileExplorer = () => {
         </div>
         
         <div className="file-explorer-main">
+          {searchQuery && (
+            <div className="search-header">
+              <h3>Search Results for "{searchQuery}"</h3>
+              <span className="search-count">
+                {isSearching ? 'Searching...' : `${currentContents.length} items found`}
+              </span>
+            </div>
+          )}
+          
           <FileGrid
             items={currentContents}
             currentPath={currentPath}
@@ -211,6 +283,8 @@ const FileExplorer = () => {
             onContextMenu={handleContextMenu}
             viewMode={viewMode}
             onDoubleClick={handleFileDoubleClick}
+            onEditFile={handleEditFile}
+            searchQuery={searchQuery}
           />
         </div>
       </div>
@@ -226,7 +300,9 @@ const FileExplorer = () => {
           onCreateFile={handleCreateFile}
           onDelete={handleDeleteItems}
           onRename={handleRenameItem}
+          onEdit={handleEditFile}
           onClose={() => setContextMenu({ visible: false, x: 0, y: 0, target: null })}
+          fileService={fileService}
         />
       )}
     </div>

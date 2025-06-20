@@ -10,12 +10,21 @@ import Terminal from '../Applications/Terminal';
 import fileService from '../../services/fileService';
 import { getDesktop, updateIconPosition, updateDesktopIcons } from '../../services/desktopService';
 import { useAuth } from '../../contexts/AuthContext';
+import { useFileSystem } from '../../contexts/FileSystemContext';
 import '../../styles/theme.css';
 import WallpaperModal from './WallpaperModal';
-import { FileSystemProvider } from '../../contexts/FileSystemContext';
 
-const Desktop = ({ createWindow, windows = [], onWindowFocus, onWindowMinimize }) => {
+const Desktop = ({ 
+  createWindow, 
+  windows = [], 
+  onWindowFocus, 
+  onWindowMinimize,
+  onWindowMaximize, 
+  onWindowClose,
+  onStartMenuAction 
+}) => {
   const { token } = useAuth();
+  const fileSystemContext = useFileSystem();
   const [contextMenu, setContextMenu] = useState({ visible: false, x: 0, y: 0 });
   const [iconContextMenu, setIconContextMenu] = useState({ visible: false, x: 0, y: 0, icon: null });
   const [desktopIcons, setDesktopIcons] = useState([]);
@@ -25,6 +34,11 @@ const Desktop = ({ createWindow, windows = [], onWindowFocus, onWindowMinimize }
   const [showWallpaperModal, setShowWallpaperModal] = useState(false);
 
   const desktopRef = useRef(null);
+
+  // Set up file service context
+  useEffect(() => {
+    fileService.setFileSystemContext(fileSystemContext);
+  }, [fileSystemContext]);
 
   // Fetch desktop configuration on mount
   useEffect(() => {
@@ -40,7 +54,6 @@ const Desktop = ({ createWindow, windows = [], onWindowFocus, onWindowMinimize }
         const response = await getDesktop(token);
 
         if (response.success && response.data) {
-          // Transform backend data to match frontend format
           const transformedIcons = response.data.desktopIcons?.map(icon => ({
             id: icon._id,
             name: icon.appId?.displayName || 'Unknown App',
@@ -51,81 +64,22 @@ const Desktop = ({ createWindow, windows = [], onWindowFocus, onWindowMinimize }
             visible: icon.visible !== false
           })) || [];
 
-          console.log('Loaded desktopIcons:', transformedIcons);
-
           setDesktopIcons(transformedIcons);
         }
       } catch (err) {
         console.error('Error fetching desktop:', err);
         setError(err.message);
-        // Fallback to default icons if API fails
+        // Fallback to default icons
         setDesktopIcons([
-          {
-            id: 1,
-            name: 'My Computer',
-            icon: '🖥️',
-            x: 50,
-            y: 50,
-            type: 'computer'
-          },
-          {
-            id: 2,
-            name: 'Documents',
-            icon: '📁',
-            x: 50,
-            y: 100,
-            type: 'folder'
-          },
-          {
-            id: 3,
-            name: 'Recycle Bin',
-            icon: '🗑️',
-            x: 50,
-            y: 150,
-            type: 'trash'
-          },
-          {
-            id: 4,
-            name: 'Settings',
-            icon: '⚙️',
-            x: 50,
-            y: 250,
-            type: 'settings'
-          },
-          {
-            id: 5,
-            name: 'Notepad',
-            icon: '📝',
-            x: 50,
-            y: 350,
-            type: 'notepad'
-          },
-          {
-            id: 6,
-            name: 'File Explorer',
-            icon: '📂',
-            x: 50,
-            y: 450,
-            type: 'file-explorer'
-          },
-          {
-            id: 7,
-            name: 'Browser',
-            icon: '🌐',
-            x: 50,
-            y: 550,
-            type: 'browser'
-          },
-          {
-            id: 8,
-            name: 'Terminal',
-            icon: '🖳',
-            x: 50,
-            y: 650,
-            type: 'terminal'
-          }
+          { id: 1, name: 'My Computer', icon: '🖥️', x: 50, y: 50, type: 'computer' },
+          { id: 2, name: 'Documents', icon: '📁', x: 50, y: 100, type: 'folder' },
+          { id: 3, name: 'Recycle Bin', icon: '🗑️', x: 50, y: 150, type: 'trash' },
+          { id: 4, name: 'Settings', icon: '⚙️', x: 50, y: 250, type: 'settings' },
+          { id: 5, name: 'Notepad', icon: '📝', x: 50, y: 350, type: 'notepad' },
+          { id: 6, name: 'File Explorer', icon: '📂', x: 50, y: 450, type: 'file-explorer' },
+          { id: 7, name: 'Browser', icon: '🌐', x: 50, y: 550, type: 'browser' },
+          { id: 8, name: 'Terminal', icon: '🖳', x: 50, y: 650, type: 'terminal' }
         ]);
-
       } finally {
         setLoading(false);
       }
@@ -147,24 +101,42 @@ const Desktop = ({ createWindow, windows = [], onWindowFocus, onWindowMinimize }
 
   const handleFileOpen = (fileEvent) => {
     const { filePath, fileContent, fileType } = fileEvent;
+    
+    // Check if there's already a window open with this file
+    const existingWindow = windows.find(w => 
+      w.title.includes(filePath.split('/').pop()) && w.title.includes('Notepad')
+    );
 
-    // Create a new Notepad window with the file content
-    createWindow({
+    if (existingWindow) {
+      // Focus the existing window
+      onWindowFocus && onWindowFocus(existingWindow.id);
+      return;
+    }
+
+    // Create a new Notepad window with file content and enhanced title callback
+    const windowId = createWindow({
       title: `${filePath.split('/').pop()} - Notepad`,
-      content: <Notepad initialContent={fileContent} initialFilePath={filePath} initialLanguage={fileType} />,
+      content: <Notepad 
+        initialContent={fileContent} 
+        initialFilePath={filePath} 
+        initialLanguage={fileType}
+        onTitleChange={(newTitle) => {
+          // Update window title when file is modified
+          // This would need to be implemented in your window manager
+          console.log('Window title should update to:', newTitle);
+        }}
+      />,
       initialPosition: { x: 100 + Math.random() * 100, y: 100 + Math.random() * 100 },
-      initialSize: { width: 800, height: 600 },
-      minSize: { width: 400, height: 300 }
+      initialSize: { width: 900, height: 650 },
+      minSize: { width: 600, height: 400 }
     });
+
+    console.log(`📝 Opened file in Notepad: ${filePath}`);
   };
 
   const handleContextMenu = (e) => {
     e.preventDefault();
-    setContextMenu({
-      visible: true,
-      x: e.clientX,
-      y: e.clientY
-    });
+    setContextMenu({ visible: true, x: e.clientX, y: e.clientY });
   };
 
   const handleClick = () => {
@@ -172,104 +144,115 @@ const Desktop = ({ createWindow, windows = [], onWindowFocus, onWindowMinimize }
   };
 
   const handleIconMove = async (id, newX, newY) => {
-    // Update local state immediately for responsive UI
     setDesktopIcons(prev =>
       prev.map(icon =>
         icon.id === id ? { ...icon, x: newX, y: newY } : icon
       )
     );
 
-    // Persist to backend
     if (token) {
       try {
         await updateIconPosition(id, { x: newX, y: newY }, token);
       } catch (err) {
         console.error('Error updating icon position:', err);
-        // Optionally revert the position change on error
-        // setDesktopIcons(prev => 
-        //   prev.map(icon => 
-        //     icon.id === id ? { ...icon, x: oldX, y: oldY } : icon
-        //   )
-        // );
       }
     }
   };
 
   const handleIconDoubleClick = (icon) => {
-    console.log('handleIconDoubleClick called with icon:', icon);
-    console.log('Icon type:', icon.type);
+    // Check if app is already running
+    const existingWindow = windows.find(w => {
+      const appName = icon.name.toLowerCase();
+      const windowTitle = w.title.toLowerCase();
+      
+      return windowTitle.includes(appName) ||
+             (icon.type === 'file-explorer' && windowTitle.includes('file explorer')) ||
+             (icon.type === 'notepad' && windowTitle.includes('notepad')) ||
+             (icon.type === 'browser' && windowTitle.includes('browser')) ||
+             (icon.type === 'terminal' && windowTitle.includes('terminal'));
+    });
 
-    switch (icon.type) {
-      case 'notepad':
-        console.log('Opening Notepad');
-        createWindow({
-          title: 'Notepad',
-          content: <Notepad />,
-          initialPosition: { x: 100, y: 100 },
-          initialSize: { width: 600, height: 400 },
-          minSize: { width: 300, height: 200 }
-        });
-        break;
-      case 'fileexplorer':
-      case 'file-explorer':
-        console.log('Opening File Explorer window');
-        createWindow({
-          title: 'File Explorer',
-          content: <FileExplorer />,
-          initialPosition: { x: 150, y: 150 },
-          initialSize: { width: 800, height: 600 },
-          minSize: { width: 600, height: 400 }
-        });
-        break;
-      case 'browser':
-        createWindow({
-          title: 'Web Browser',
-          content: <Browser />,
-          initialPosition: { x: 200, y: 200 },
-          initialSize: { width: 900, height: 600 },
-          minSize: { width: 400, height: 300 }
-        });
-        break;
-      case 'terminal':
-        createWindow({
-          title: 'Terminal',
-          content: <Terminal />,
-          initialPosition: { x: 250, y: 250 },
-          initialSize: { width: 700, height: 400 },
-          minSize: { width: 400, height: 250 }
-        });
-        break;
-      case 'computer':
-      case 'my-computer':
-        createWindow({
-          title: 'My Computer',
-          content: <div style={{ padding: '20px', color: 'white' }}>My Computer - Coming Soon</div>,
-          initialPosition: { x: 200, y: 200 },
-          initialSize: { width: 500, height: 300 },
-          minSize: { width: 400, height: 250 }
-        });
-        break;
-      case 'folder':
-        createWindow({
-          title: 'Documents',
-          content: <div style={{ padding: '20px', color: 'white' }}>Documents Folder - Coming Soon</div>,
-          initialPosition: { x: 250, y: 250 },
-          initialSize: { width: 500, height: 300 },
-          minSize: { width: 400, height: 250 }
-        });
-        break;
-      case 'settings':
-        createWindow({
-          title: 'Settings',
-          content: <div style={{ padding: '20px', color: 'white' }}>Settings - Coming Soon</div>,
-          initialPosition: { x: 300, y: 300 },
-          initialSize: { width: 500, height: 300 },
-          minSize: { width: 400, height: 250 }
-        });
-        break;
-      default:
-        console.log(`Opening ${icon.name}`);
-        break;
+    if (existingWindow) {
+      // Focus existing window
+      onWindowFocus && onWindowFocus(existingWindow.id);
+      return;
+    }
+
+    // Create new window with enhanced configurations
+    const appConfigs = {
+      notepad: {
+        title: 'Notepad',
+        content: <Notepad />,
+        initialPosition: { x: 100, y: 100 },
+        initialSize: { width: 900, height: 650 },
+        minSize: { width: 600, height: 400 }
+      },
+      'file-explorer': {
+        title: 'File Explorer',
+        content: <FileExplorer />,
+        initialPosition: { x: 150, y: 150 },
+        initialSize: { width: 1000, height: 700 },
+        minSize: { width: 800, height: 500 }
+      },
+      browser: {
+        title: 'Web Browser',
+        content: <Browser />,
+        initialPosition: { x: 200, y: 200 },
+        initialSize: { width: 1100, height: 700 },
+        minSize: { width: 600, height: 400 }
+      },
+      terminal: {
+        title: 'Terminal',
+        content: <Terminal />,
+        initialPosition: { x: 250, y: 250 },
+        initialSize: { width: 800, height: 500 },
+        minSize: { width: 500, height: 300 }
+      },
+      computer: {
+        title: 'My Computer',
+        content: <div style={{ padding: '20px', color: 'white' }}>
+          <h2>My Computer</h2>
+          <p>System Information:</p>
+          <ul>
+            <li>OS: WebOS 1.0</li>
+            <li>Browser: {navigator.userAgent.split(' ')[0]}</li>
+            <li>Platform: {navigator.platform}</li>
+            <li>Language: {navigator.language}</li>
+          </ul>
+        </div>,
+        initialPosition: { x: 200, y: 200 },
+        initialSize: { width: 500, height: 300 },
+        minSize: { width: 400, height: 250 }
+      },
+      folder: {
+        title: 'Documents',
+        content: <FileExplorer />,
+        initialPosition: { x: 250, y: 250 },
+        initialSize: { width: 1000, height: 700 },
+        minSize: { width: 800, height: 500 }
+      },
+      settings: {
+        title: 'Settings',
+        content: <div style={{ padding: '20px', color: 'white' }}>
+          <h2>System Settings</h2>
+          <p>Configure your WebOS experience:</p>
+          <ul>
+            <li>Display Settings</li>
+            <li>File System Options</li>
+            <li>User Preferences</li>
+            <li>Application Settings</li>
+          </ul>
+          <p><em>Settings panel coming soon...</em></p>
+        </div>,
+        initialPosition: { x: 300, y: 300 },
+        initialSize: { width: 600, height: 400 },
+        minSize: { width: 500, height: 300 }
+      }
+    };
+
+    const config = appConfigs[icon.type];
+    if (config) {
+      createWindow(config);
     }
   };
 
@@ -297,36 +280,27 @@ const Desktop = ({ createWindow, windows = [], onWindowFocus, onWindowMinimize }
           y: Math.random() * 200 + 50,
           type: 'folder'
         };
-
-        const updatedIcons = [...desktopIcons, newFolder];
-        setDesktopIcons(updatedIcons);
-
-        // Persist to backend if token is available
-        if (token) {
+        setDesktopIcons(prev => [...prev, newFolder]);
+        break;
+      }
+      case 'new-text-file': {
+        // Create a new text file on desktop and open it in Notepad
+        const fileName = prompt('Enter file name:', 'New Document.txt');
+        if (fileName && fileName.trim()) {
           try {
-            // Transform frontend format to backend format
-            const backendIcons = updatedIcons.map(icon => ({
-              _id: icon.id,
-              appId: { _id: icon.id, displayName: icon.name, icon: icon.icon, name: icon.type },
-              position: { x: icon.x, y: icon.y },
-              visible: icon.visible !== false
-            }));
-
-            await updateDesktopIcons(backendIcons, token);
-          } catch (err) {
-            console.error('Error updating desktop icons:', err);
-            // Optionally revert the change on error
-            setDesktopIcons(desktopIcons);
+            const filePath = `/Desktop/${fileName.trim()}`;
+            await fileSystemContext.createFile(fileName.trim(), '', '/Desktop');
+            
+            // Open the new file in Notepad
+            fileService.openFile(filePath, '', 'text');
+          } catch (error) {
+            alert(`Error creating file: ${error.message}`);
           }
         }
         break;
       }
       case 'refresh':
-        // Refresh desktop (could reload icons or reset positions)
         window.location.reload();
-        break;
-      case 'view':
-        // Change view mode (icons, list, details)
         break;
       default:
         break;
@@ -334,161 +308,101 @@ const Desktop = ({ createWindow, windows = [], onWindowFocus, onWindowMinimize }
     setContextMenu({ visible: false, x: 0, y: 0 });
   };
 
-  // Right-click handler for desktop icons
   const handleIconContextMenu = (e, icon) => {
     e.preventDefault();
     setIconContextMenu({ visible: true, x: e.clientX, y: e.clientY, icon });
   };
 
-  // Handle icon context menu actions
   const handleIconContextMenuAction = (action) => {
     if (!iconContextMenu.icon) return;
     if (action === 'open') {
       handleIconDoubleClick(iconContextMenu.icon);
     }
-    // Add more actions here (view, properties, etc.)
     setIconContextMenu({ visible: false, x: 0, y: 0, icon: null });
-  };
-
-  // Handle taskbar window creation from start menu
-  const handleTaskbarCreateWindow = (config) => {
-    const componentMap = {
-      notepad: <Notepad />,
-      fileexplorer: <FileExplorer />,
-      browser: <Browser />,
-      terminal: <Terminal />,
-      calculator: <div style={{ padding: '20px', color: 'white' }}>Calculator - Coming Soon</div>,
-      settings: <div style={{ padding: '20px', color: 'white' }}>Settings - Coming Soon</div>
-    };
-
-    createWindow({
-      title: config.title,
-      content: componentMap[config.content] || <div>Unknown App</div>,
-      initialPosition: config.initialPosition,
-      initialSize: config.initialSize,
-      minSize: config.minSize
-    });
-  };
-
-  // Handle start menu actions (lock, restart, shutdown)
-  const handleStartMenuAction = (action) => {
-    switch (action) {
-      case 'lock':
-        // Implement lock screen functionality
-        console.log('Locking screen...');
-        break;
-      case 'restart':
-        // Implement restart functionality
-        console.log('Restarting...');
-        if (window.confirm('Are you sure you want to restart?')) {
-          window.location.reload();
-        }
-        break;
-      case 'shutdown':
-        // Implement shutdown functionality
-        console.log('Shutting down...');
-        if (window.confirm('Are you sure you want to shut down?')) {
-          // You could redirect to login or show a shutdown screen
-          window.close();
-        }
-        break;
-      default:
-        break;
-    }
   };
 
   useEffect(() => {
     document.addEventListener('click', handleClick);
-    return () => {
-      document.removeEventListener('click', handleClick);
-    };
+    return () => document.removeEventListener('click', handleClick);
   }, []);
 
   return (
-    <FileSystemProvider>
+    <div ref={desktopRef} className="desktop" onContextMenu={handleContextMenu}>
+      {/* Desktop Background */}
       <div
-        ref={desktopRef}
-        className="desktop"
-        onContextMenu={handleContextMenu}
-      >
-        {/* Desktop Background */}
-        <div
-          className="desktop-background"
-          style={wallpaper ? {
-            backgroundImage: `url(${wallpaper})`,
-            backgroundSize: 'cover',
-            backgroundPosition: 'center',
-            backgroundRepeat: 'no-repeat'
-          } : {}}
-        ></div>
+        className="desktop-background"
+        style={wallpaper ? {
+          backgroundImage: `url(${wallpaper})`,
+          backgroundSize: 'cover',
+          backgroundPosition: 'center',
+          backgroundRepeat: 'no-repeat'
+        } : {}}
+      />
 
-        {/* Loading State */}
-        {loading && (
-          <div className="desktop-loading">
-            <div className="loading-spinner"></div>
-            <p>Loading desktop...</p>
-          </div>
-        )}
+      {/* Loading State */}
+      {loading && (
+        <div className="desktop-loading">
+          <div className="loading-spinner"></div>
+          <p>Loading desktop...</p>
+        </div>
+      )}
 
-        {/* Error State */}
-        {error && !loading && (
-          <div className="desktop-error">
-            <p>Error loading desktop: {error}</p>
-            <button onClick={() => window.location.reload()}>Retry</button>
-          </div>
-        )}
+      {/* Error State */}
+      {error && !loading && (
+        <div className="desktop-error">
+          <p>Error loading desktop: {error}</p>
+          <button onClick={() => window.location.reload()}>Retry</button>
+        </div>
+      )}
 
-        {/* Desktop Icons */}
-        {!loading && !error && desktopIcons.map(icon => (
-          <DesktopIcon
-            key={icon.id}
-            icon={icon}
-            onMove={handleIconMove}
-            onDoubleClick={() => handleIconDoubleClick(icon)}
-            onContextMenu={handleIconContextMenu}
-          />
-        ))}
-
-        {/* Icon Context Menu */}
-        {iconContextMenu.visible && (
-          <ContextMenu
-            x={iconContextMenu.x}
-            y={iconContextMenu.y}
-            onAction={handleIconContextMenuAction}
-            menuType="icon"
-          />
-        )}
-
-        {/* Desktop Context Menu */}
-        {contextMenu.visible && (
-          <ContextMenu
-            x={contextMenu.x}
-            y={contextMenu.y}
-            onAction={handleContextMenuAction}
-          />
-        )}
-
-        {/* Wallpaper Modal */}
-        {showWallpaperModal && (
-          <WallpaperModal
-            currentWallpaper={wallpaper}
-            onWallpaperChange={handleWallpaperChange}
-            onClose={() => setShowWallpaperModal(false)}
-          />
-        )}
-
-        {/* Taskbar */}
-
-        <Taskbar
-          windows={windows}
-          onWindowFocus={onWindowFocus}
-          onWindowMinimize={onWindowMinimize}
-          createWindow={handleTaskbarCreateWindow}
-          onStartMenuAction={handleStartMenuAction}
+      {/* Desktop Icons */}
+      {!loading && !error && desktopIcons.map(icon => (
+        <DesktopIcon
+          key={icon.id}
+          icon={icon}
+          onMove={handleIconMove}
+          onDoubleClick={() => handleIconDoubleClick(icon)}
+          onContextMenu={handleIconContextMenu}
         />
+      ))}
 
-      </div>
-    </FileSystemProvider>
+      {/* Context Menus */}
+      {iconContextMenu.visible && (
+        <ContextMenu
+          x={iconContextMenu.x}
+          y={iconContextMenu.y}
+          onAction={handleIconContextMenuAction}
+          menuType="icon"
+        />
+      )}
+
+      {contextMenu.visible && (
+        <ContextMenu
+          x={contextMenu.x}
+          y={contextMenu.y}
+          onAction={handleContextMenuAction}
+        />
+      )}
+
+      {/* Wallpaper Modal */}
+      {showWallpaperModal && (
+        <WallpaperModal
+          currentWallpaper={wallpaper}
+          onWallpaperChange={handleWallpaperChange}
+          onClose={() => setShowWallpaperModal(false)}
+        />
+      )}
+
+      {/* Enhanced Taskbar */}
+      <Taskbar
+        windows={windows}
+        onWindowFocus={onWindowFocus}
+        onWindowMinimize={onWindowMinimize}
+        onWindowClose={onWindowClose}
+        createWindow={createWindow}
+        onStartMenuAction={onStartMenuAction}
+      />
+    </div>
   );
 };
 
