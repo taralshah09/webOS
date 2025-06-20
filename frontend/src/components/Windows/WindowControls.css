@@ -3,7 +3,7 @@
   gap: var(--spacing-xs);
 }
 
-.window-control-btn {
+.window-control {
   width: 32px;
   height: 32px;
   display: flex;
@@ -18,14 +18,14 @@
   transition: background var(--transition), color var(--transition), box-shadow var(--transition);
 }
 
-.window-control-btn:hover, .window-control-btn:focus {
+.window-control:hover, .window-control:focus {
   background: var(--color-accent);
   color: var(--color-text);
   box-shadow: 0 2px 8px var(--color-shadow);
   outline: none;
 }
 
-.window-control-btn:active {
+.window-control:active {
   background: var(--color-accent-hover);
 }
 
