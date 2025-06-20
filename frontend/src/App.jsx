@@ -1,6 +1,7 @@
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
+import { FileSystemProvider } from './contexts/FileSystemContext';
 import { WindowManager } from './components/Windows';
 import { ProtectedRoute, UserMenu, LoginForm, RegisterForm } from './components/Auth';
 import Desktop from './components/Desktop/Desktop';
@@ -32,13 +33,15 @@ function RegisterPage() {
 function App() {
   return (
     <AuthProvider>
-      <Router>
-        <Routes>
-          <Route path="/login" element={<LoginPage />} />
-          <Route path="/register" element={<RegisterPage />} />
-          <Route path="/*" element={<ProtectedApp />} />
-        </Routes>
-      </Router>
+      <FileSystemProvider>
+        <Router>
+          <Routes>
+            <Route path="/login" element={<LoginPage />} />
+            <Route path="/register" element={<RegisterPage />} />
+            <Route path="/*" element={<ProtectedApp />} />
+          </Routes>
+        </Router>
+      </FileSystemProvider>
     </AuthProvider>
   );
 }
