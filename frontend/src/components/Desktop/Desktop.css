@@ -1,75 +1,101 @@
+/* Desktop.css - Updated with Taskbar Integration */
+
 .desktop {
-  background: var(--color-bg);
-  color: var(--color-text);
-  font-family: var(--font-main);
-  min-height: 100vh;
-  padding: var(--spacing-md);
-  position: relative;
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
   overflow: hidden;
+  font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+  user-select: none;
+  /* Reserve space for taskbar at bottom */
+  padding-bottom: 48px;
+  box-sizing: border-box;
 }
 
 .desktop-background {
-  position: absolute;
-  top: 0; left: 0; right: 0; bottom: 0;
-  background: linear-gradient(120deg, var(--color-bg) 60%, var(--color-bg-alt) 100%);
-  z-index: 0;
-}
-
-/* Optional: Add a subtle pattern overlay */
-.desktop-background::after {
-  content: '';
   position: absolute;
   top: 0;
   left: 0;
   width: 100%;
   height: 100%;
-  background-image: 
-    radial-gradient(circle at 25% 25%, rgba(255,255,255,0.1) 1px, transparent 1px),
-    radial-gradient(circle at 75% 75%, rgba(255,255,255,0.1) 1px, transparent 1px);
-  background-size: 50px 50px;
+  background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+  z-index: -1;
+}
+
+/* Desktop Icons */
+.desktop-icon {
+  position: absolute;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 80px;
+  padding: 8px;
+  cursor: pointer;
+  border-radius: 4px;
+  transition: background-color 0.2s ease;
+  z-index: 100;
+}
+
+.desktop-icon:hover {
+  background-color: rgba(255, 255, 255, 0.1);
+}
+
+.desktop-icon.selected {
+  background-color: rgba(0, 120, 215, 0.3);
+  border: 1px solid rgba(0, 120, 215, 0.5);
+}
+
+.desktop-icon.dragging {
+  opacity: 0.8;
+  transform: scale(0.95);
+  z-index: 1000;
+}
+
+.desktop-icon-image {
+  font-size: 32px;
+  margin-bottom: 4px;
   pointer-events: none;
 }
 
-/* Ensure desktop takes full viewport */
-.desktop * {
-  box-sizing: border-box;
-}
-
-/* Prevent text selection on desktop */
-.desktop {
-  -webkit-user-select: none;
-  -moz-user-select: none;
-  -ms-user-select: none;
-  user-select: none;
-}
-
-/* Smooth transitions for desktop elements */
-.desktop * {
-  transition: all 0.2s ease-in-out;
-}
-
-/* Loading State */
-.desktop-loading, .desktop-error {
-  position: absolute;
-  top: 50%; left: 50%;
-  transform: translate(-50%, -50%);
-  background: var(--color-bg-alt);
-  color: var(--color-text);
-  border-radius: var(--radius);
-  box-shadow: var(--shadow);
-  padding: var(--spacing-lg);
-  z-index: 10;
+.desktop-icon-name {
+  font-size: 12px;
+  color: #ffffff;
   text-align: center;
+  text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.8);
+  line-height: 1.2;
+  word-wrap: break-word;
+  max-width: 70px;
+  pointer-events: none;
+}
+
+/* Loading and Error States */
+.desktop-loading,
+.desktop-error {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  text-align: center;
+  color: #ffffff;
+  z-index: 1000;
+}
+
+.desktop-loading {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
 }
 
 .loading-spinner {
   width: 40px;
   height: 40px;
-  border: 4px solid var(--color-border);
-  border-top: 4px solid var(--color-accent);
+  border: 3px solid rgba(255, 255, 255, 0.3);
+  border-top: 3px solid #ffffff;
   border-radius: 50%;
   animation: spin 1s linear infinite;
-  margin: 0 auto var(--spacing-md) auto;
 }
 
 @keyframes spin {
@@ -77,33 +103,242 @@
   100% { transform: rotate(360deg); }
 }
 
-.desktop-loading p {
-  margin: 0;
-  font-size: 16px;
-  font-weight: 500;
-}
-
+.desktop-loading p,
 .desktop-error p {
   margin: 0;
   font-size: 16px;
-  line-height: 1.4;
+  font-weight: 500;
+  text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.8);
 }
 
 .desktop-error button {
-  background: var(--color-accent);
-  color: var(--color-text);
+  margin-top: 12px;
+  padding: 8px 16px;
+  background: rgba(0, 120, 215, 0.8);
   border: none;
-  border-radius: var(--radius);
-  padding: var(--spacing-sm) var(--spacing-md);
-  font-size: var(--font-size-base);
+  border-radius: 4px;
+  color: #ffffff;
+  font-size: 14px;
   cursor: pointer;
-  transition: background var(--transition), box-shadow var(--transition);
-  margin-top: var(--spacing-md);
+  transition: background-color 0.2s ease;
 }
 
 .desktop-error button:hover {
-  background: var(--color-accent-hover);
-  box-shadow: 0 4px 16px var(--color-shadow);
+  background: rgba(0, 120, 215, 1);
 }
 
-/* Desktop icon area (children will be styled in DesktopIcon.css) */ 
+/* Context Menu */
+.context-menu {
+  position: fixed;
+  background: rgba(30, 30, 30, 0.95);
+  backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 6px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+  z-index: 10001;
+  min-width: 180px;
+  padding: 4px 0;
+  animation: contextMenuAppear 0.15s ease-out;
+}
+
+@keyframes contextMenuAppear {
+  from {
+    opacity: 0;
+    transform: scale(0.95) translateY(-5px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+.context-menu-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 16px;
+  color: #ffffff;
+  font-size: 13px;
+  cursor: pointer;
+  transition: background-color 0.15s ease;
+  border: none;
+  background: transparent;
+  width: 100%;
+  text-align: left;
+}
+
+.context-menu-item:hover {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.context-menu-item:active {
+  background: rgba(255, 255, 255, 0.2);
+}
+
+.context-menu-separator {
+  height: 1px;
+  background: rgba(255, 255, 255, 0.1);
+  margin: 4px 0;
+}
+
+/* Wallpaper Modal */
+.wallpaper-modal {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.7);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 10002;
+}
+
+.wallpaper-modal-content {
+  background: rgba(30, 30, 30, 0.95);
+  backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 12px;
+  padding: 24px;
+  max-width: 500px;
+  width: 90%;
+  color: #ffffff;
+  animation: modalAppear 0.3s ease-out;
+}
+
+@keyframes modalAppear {
+  from {
+    opacity: 0;
+    transform: scale(0.9) translateY(-20px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+.wallpaper-modal h3 {
+  margin: 0 0 20px 0;
+  font-size: 18px;
+  font-weight: 600;
+}
+
+.wallpaper-options {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+  gap: 12px;
+  margin-bottom: 20px;
+}
+
+.wallpaper-option {
+  aspect-ratio: 16/9;
+  border-radius: 6px;
+  cursor: pointer;
+  border: 2px solid transparent;
+  transition: all 0.2s ease;
+  background-size: cover;
+  background-position: center;
+  overflow: hidden;
+  position: relative;
+}
+
+.wallpaper-option:hover {
+  border-color: rgba(0, 120, 215, 0.5);
+  transform: scale(1.02);
+}
+
+.wallpaper-option.selected {
+  border-color: #0078d4;
+  box-shadow: 0 0 0 1px #0078d4;
+}
+
+.wallpaper-option.solid-color {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  font-weight: 500;
+  text-align: center;
+  color: rgba(255, 255, 255, 0.9);
+}
+
+.wallpaper-modal-actions {
+  display: flex;
+  gap: 12px;
+  justify-content: flex-end;
+}
+
+.wallpaper-modal-actions button {
+  padding: 8px 16px;
+  border: none;
+  border-radius: 4px;
+  font-size: 14px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.wallpaper-modal-actions .btn-primary {
+  background: #0078d4;
+  color: #ffffff;
+}
+
+.wallpaper-modal-actions .btn-primary:hover {
+  background: #106ebe;
+}
+
+.wallpaper-modal-actions .btn-secondary {
+  background: transparent;
+  color: #ffffff;
+  border: 1px solid rgba(255, 255, 255, 0.3);
+}
+
+.wallpaper-modal-actions .btn-secondary:hover {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .desktop-icon {
+    width: 70px;
+    padding: 6px;
+  }
+  
+  .desktop-icon-image {
+    font-size: 28px;
+  }
+  
+  .desktop-icon-name {
+    font-size: 11px;
+    max-width: 60px;
+  }
+  
+  .wallpaper-modal-content {
+    padding: 20px;
+    margin: 20px;
+  }
+  
+  .wallpaper-options {
+    grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
+    gap: 8px;
+  }
+}
+
+/* Prevent text selection during drag operations */
+.desktop.dragging {
+  user-select: none;
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
+}
+
+/* Ensure taskbar is always on top of desktop content */
+.desktop .taskbar {
+  z-index: 10000;
+}
+
+/* Adjust window container to not overlap with taskbar */
+.window-container {
+  max-height: calc(100vh - 48px);
+  overflow: hidden;
+}

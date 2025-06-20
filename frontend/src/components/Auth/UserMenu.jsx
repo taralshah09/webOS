@@ -34,32 +34,22 @@ const UserMenu = () => {
 
   return (
     <div className="user-menu" ref={menuRef}>
-      <img
-        src={"https://tinyurl.com/mr2mpjsk"}
-        alt={user.username}
-        className="user-avatar"
-        onClick={handleToggle}
-        onError={(e) => {
-          e.target.src = `https://tinyurl.com/mr2mpjsk`;
-        }}
-      />
-      
       <div className={`user-dropdown ${isOpen ? 'show' : ''}`}>
         <div className="user-info">
           <div className="user-name">{user.username}</div>
           <div className="user-email">{user.email}</div>
         </div>
-        
+
         <div className="user-dropdown-item">
           <span>👤</span>
           Profile
         </div>
-        
+
         <div className="user-dropdown-item">
           <span>⚙️</span>
           Settings
         </div>
-        
+
         <div className="user-dropdown-item logout" onClick={handleLogout}>
           <span>🚪</span>
           Sign Out
@@ -69,4 +59,4 @@ const UserMenu = () => {
   );
 };
 
-export default UserMenu; 
+export default UserMenu;

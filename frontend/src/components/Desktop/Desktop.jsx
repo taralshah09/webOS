@@ -2,18 +2,19 @@ import React, { useState, useRef, useEffect } from 'react';
 import './Desktop.css';
 import DesktopIcon from './DesktopIcon';
 import ContextMenu from './ContextMenu';
+import Taskbar from '../Taskbar/Taskbar';
 import Notepad from '../Applications/Notepad';
 import FileExplorer from '../FileExplorer/FileExplorer';
-import fileService from '../../services/fileService';
 import Browser from '../Applications/Browser';
 import Terminal from '../Applications/Terminal';
+import fileService from '../../services/fileService';
 import { getDesktop, updateIconPosition, updateDesktopIcons } from '../../services/desktopService';
 import { useAuth } from '../../contexts/AuthContext';
 import '../../styles/theme.css';
 import WallpaperModal from './WallpaperModal';
 import { FileSystemProvider } from '../../contexts/FileSystemContext';
 
-const Desktop = ({ createWindow }) => {
+const Desktop = ({ createWindow, windows = [], onWindowFocus, onWindowMinimize }) => {
   const { token } = useAuth();
   const [contextMenu, setContextMenu] = useState({ visible: false, x: 0, y: 0 });
   const [iconContextMenu, setIconContextMenu] = useState({ visible: false, x: 0, y: 0, icon: null });
@@ -349,6 +350,53 @@ const Desktop = ({ createWindow }) => {
     setIconContextMenu({ visible: false, x: 0, y: 0, icon: null });
   };
 
+  // Handle taskbar window creation from start menu
+  const handleTaskbarCreateWindow = (config) => {
+    const componentMap = {
+      notepad: <Notepad />,
+      fileexplorer: <FileExplorer />,
+      browser: <Browser />,
+      terminal: <Terminal />,
+      calculator: <div style={{ padding: '20px', color: 'white' }}>Calculator - Coming Soon</div>,
+      settings: <div style={{ padding: '20px', color: 'white' }}>Settings - Coming Soon</div>
+    };
+
+    createWindow({
+      title: config.title,
+      content: componentMap[config.content] || <div>Unknown App</div>,
+      initialPosition: config.initialPosition,
+      initialSize: config.initialSize,
+      minSize: config.minSize
+    });
+  };
+
+  // Handle start menu actions (lock, restart, shutdown)
+  const handleStartMenuAction = (action) => {
+    switch (action) {
+      case 'lock':
+        // Implement lock screen functionality
+        console.log('Locking screen...');
+        break;
+      case 'restart':
+        // Implement restart functionality
+        console.log('Restarting...');
+        if (window.confirm('Are you sure you want to restart?')) {
+          window.location.reload();
+        }
+        break;
+      case 'shutdown':
+        // Implement shutdown functionality
+        console.log('Shutting down...');
+        if (window.confirm('Are you sure you want to shut down?')) {
+          // You could redirect to login or show a shutdown screen
+          window.close();
+        }
+        break;
+      default:
+        break;
+    }
+  };
+
   useEffect(() => {
     document.addEventListener('click', handleClick);
     return () => {
@@ -358,7 +406,6 @@ const Desktop = ({ createWindow }) => {
 
   return (
     <FileSystemProvider>
-
       <div
         ref={desktopRef}
         className="desktop"
@@ -429,9 +476,18 @@ const Desktop = ({ createWindow }) => {
             onClose={() => setShowWallpaperModal(false)}
           />
         )}
+
+        {/* Taskbar */}
+        <Taskbar
+          windows={windows}
+          onWindowFocus={onWindowFocus}
+          onWindowMinimize={onWindowMinimize}
+          createWindow={handleTaskbarCreateWindow}
+          onStartMenuAction={handleStartMenuAction}
+        />
       </div>
     </FileSystemProvider>
   );
 };
 
-export default Desktop; 
+export default Desktop;
