@@ -478,14 +478,14 @@ const Desktop = ({ createWindow, windows = [], onWindowFocus, onWindowMinimize }
         )}
 
         {/* Taskbar */}
-        
-        {/* <Taskbar
+
+        <Taskbar
           windows={windows}
           onWindowFocus={onWindowFocus}
           onWindowMinimize={onWindowMinimize}
           createWindow={handleTaskbarCreateWindow}
           onStartMenuAction={handleStartMenuAction}
-        /> */}
+        />
 
       </div>
     </FileSystemProvider>
