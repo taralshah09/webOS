@@ -9,7 +9,7 @@
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  z-index: 1000;
+  z-index: 10000;
   color: white;
 }
 
@@ -34,15 +34,19 @@
   100% { transform: rotate(360deg); }
 }
 
-/* User menu styles for when user is logged in */
-.user-menu {
-  position: absolute;
+/* Standalone User menu styles (different from taskbar user menu) */
+.user-menu-standalone {
+  position: fixed;
   top: 20px;
   right: 20px;
-  z-index: 500;
+  z-index: 10001; /* Higher than taskbar */
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
-.user-avatar {
+.user-menu-standalone .user-avatar {
   width: 40px;
   height: 40px;
   border-radius: 50%;
@@ -51,12 +55,12 @@
   transition: all 0.2s ease;
 }
 
-.user-avatar:hover {
+.user-menu-standalone .user-avatar:hover {
   border-color: rgba(255, 255, 255, 0.6);
   transform: scale(1.05);
 }
 
-.user-dropdown {
+.user-menu-standalone .user-dropdown {
   position: absolute;
   top: 100%;
   right: 0;
@@ -66,21 +70,22 @@
   border-radius: 8px;
   padding: 8px 0;
   min-width: 200px;
-  /* box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3); */
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
   margin-top: 8px;
   opacity: 0;
   visibility: hidden;
   transform: translateY(-10px);
   transition: all 0.2s ease;
+  z-index: 10002;
 }
 
-.user-dropdown.show {
+.user-menu-standalone .user-dropdown.show {
   opacity: 1;
   visibility: visible;
   transform: translateY(0);
 }
 
-.user-dropdown-item {
+.user-menu-standalone .user-dropdown-item {
   padding: 8px 16px;
   color: rgba(255, 255, 255, 0.9);
   cursor: pointer;
@@ -90,34 +95,34 @@
   gap: 8px;
 }
 
-.user-dropdown-item:hover {
+.user-menu-standalone .user-dropdown-item:hover {
   background: rgba(255, 255, 255, 0.1);
 }
 
-.user-dropdown-item.logout {
+.user-menu-standalone .user-dropdown-item.logout {
   color: #ff6b6b;
   border-top: 1px solid rgba(255, 255, 255, 0.1);
   margin-top: 4px;
 }
 
-.user-dropdown-item.logout:hover {
+.user-menu-standalone .user-dropdown-item.logout:hover {
   background: rgba(255, 107, 107, 0.1);
 }
 
-.user-info {
+.user-menu-standalone .user-info {
   padding: 8px 16px;
   border-bottom: 1px solid rgba(255, 255, 255, 0.1);
   margin-bottom: 4px;
 }
 
-.user-name {
+.user-menu-standalone .user-name {
   font-weight: 600;
   color: white;
   font-size: 14px;
 }
 
-.user-email {
+.user-menu-standalone .user-email {
   color: rgba(255, 255, 255, 0.6);
   font-size: 12px;
   margin-top: 2px;
-} 
+}
