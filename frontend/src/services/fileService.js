@@ -5,6 +5,51 @@ class FileService {
     this.openFileCallbacks = new Map();
     this.saveFileCallbacks = new Map();
     this.fileSystemContext = null;
+
+    // Backend API configuration
+    this.apiBaseUrl =
+      import.meta.env.VITE_API_URL || "http://localhost:5000/api";
+  }
+
+  // Get auth token from your auth system
+  getAuthToken() {
+    // Adjust this based on your auth implementation
+    return (
+      localStorage.getItem("token") || sessionStorage.getItem("token") || ""
+    );
+  }
+
+  setAuthContext(authContext) {
+    this.authContext = authContext;
+  }
+
+  // API call helper
+  async apiCall(url, options = {}) {
+    const token = localStorage.getItem("webos_token");
+
+    try {
+      const response = await fetch(`${this.apiBaseUrl}${url}`, {
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+          ...options.headers,
+        },
+        ...options,
+      });
+
+      const result = await response.json();
+
+      if (!response.ok) {
+        throw new Error(
+          result.message || `HTTP ${response.status}: ${response.statusText}`
+        );
+      }
+
+      return result;
+    } catch (error) {
+      console.error("API call failed:", error);
+      throw error;
+    }
   }
 
   // Set file system context for save operations
@@ -15,7 +60,7 @@ class FileService {
   // Register a callback for opening files
   registerFileOpener(fileType, callback) {
     this.openFileCallbacks.set(fileType, callback);
-    
+
     // Return unregister function
     return () => {
       this.openFileCallbacks.delete(fileType);
@@ -25,7 +70,7 @@ class FileService {
   // Register a callback for saving files
   registerFileSaver(fileType, callback) {
     this.saveFileCallbacks.set(fileType, callback);
-    
+
     // Return unregister function
     return () => {
       this.saveFileCallbacks.delete(fileType);
@@ -34,44 +79,44 @@ class FileService {
 
   // Open a file with the appropriate application
   openFile(filePath, fileContent, fileType) {
-    const extension = filePath.split('.').pop()?.toLowerCase();
-    
+    const extension = filePath.split(".").pop()?.toLowerCase();
+
     // Map file extensions to file types
     const extensionMap = {
-      'txt': 'text',
-      'js': 'javascript',
-      'jsx': 'javascript',
-      'ts': 'typescript',
-      'tsx': 'typescript',
-      'html': 'html',
-      'css': 'css',
-      'json': 'json',
-      'md': 'markdown',
-      'py': 'python',
-      'java': 'java',
-      'cpp': 'cpp',
-      'c': 'c',
-      'php': 'php',
-      'rb': 'ruby',
-      'go': 'go',
-      'rs': 'rust',
-      'swift': 'swift',
-      'kt': 'kotlin',
-      'sql': 'sql',
-      'xml': 'xml',
-      'yaml': 'yaml',
-      'yml': 'yaml'
+      txt: "text",
+      js: "javascript",
+      jsx: "javascript",
+      ts: "typescript",
+      tsx: "typescript",
+      html: "html",
+      css: "css",
+      json: "json",
+      md: "markdown",
+      py: "python",
+      java: "java",
+      cpp: "cpp",
+      c: "c",
+      php: "php",
+      rb: "ruby",
+      go: "go",
+      rs: "rust",
+      swift: "swift",
+      kt: "kotlin",
+      sql: "sql",
+      xml: "xml",
+      yaml: "yaml",
+      yml: "yaml",
     };
 
-    const mappedType = extensionMap[extension] || 'text';
-    
+    const mappedType = extensionMap[extension] || "text";
+
     // Notify all listeners about the file opening request
     this.notifyListeners({
-      type: 'OPEN_FILE',
+      type: "OPEN_FILE",
       filePath,
       fileContent,
       fileType: mappedType,
-      extension
+      extension,
     });
 
     // Call the appropriate opener if registered
@@ -81,100 +126,246 @@ class FileService {
     }
 
     // Default to text editor for unknown types
-    const textOpener = this.openFileCallbacks.get('text');
+    const textOpener = this.openFileCallbacks.get("text");
     if (textOpener) {
-      return textOpener(filePath, fileContent, 'text');
+      return textOpener(filePath, fileContent, "text");
     }
 
-    console.warn('No file opener registered for type:', mappedType);
+    console.warn("No file opener registered for type:", mappedType);
     return null;
   }
 
-  // Save a file to the file system
+  // **NEW: Load file from backend**
+  async loadFile(filePath) {
+    try {
+      this.notifyListeners({
+        type: "LOAD_FILE_START",
+        filePath,
+      });
+
+      const result = await this.apiCall(
+        `/filesystem/file?path=${encodeURIComponent(filePath)}`
+      );
+
+      this.notifyListeners({
+        type: "LOAD_FILE_SUCCESS",
+        filePath,
+        data: result.data,
+      });
+
+      return result.data;
+    } catch (error) {
+      this.notifyListeners({
+        type: "LOAD_FILE_ERROR",
+        filePath,
+        error: error.message,
+      });
+      throw error;
+    }
+  }
+
+  // **ENHANCED: Save a file to the backend**
   async saveFile(filePath, content, options = {}) {
+    const token = localStorage.getItem("webos_token");
+    if (!token) {
+      throw new Error("Please log in to save files");
+    }
+
     try {
       // Notify listeners about save attempt
       this.notifyListeners({
-        type: 'SAVE_FILE_START',
+        type: "SAVE_FILE_START",
         filePath,
-        content
+        content,
       });
 
-      // Use file system context to save the file
-      if (this.fileSystemContext) {
-        // Extract directory and filename
-        const pathParts = filePath.split('/');
-        const fileName = pathParts.pop();
-        const dirPath = pathParts.join('/') || '/';
+      // **CORRECTED: Make direct API call with proper Authorization header**
+      const apiBaseUrl = import.meta.env.VITE_API_URL || "http://localhost:5000/api";
+      const response = await fetch(`${apiBaseUrl}/filesystem/file/save`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`, // **FIX: Actually use the token in headers**
+        },
+        body: JSON.stringify({
+          filePath: filePath,
+          content: content,
+        }),
+      });
 
-        // Save using the file system context
-        const result = await this.fileSystemContext.saveFile(fileName, content, dirPath);
-        
-        // Notify listeners about successful save
-        this.notifyListeners({
-          type: 'SAVE_FILE_SUCCESS',
-          filePath,
-          content,
-          result
-        });
+      const result = await response.json();
 
-        return result;
-      } else {
-        throw new Error('File system context not available');
+      if (!response.ok) {
+        throw new Error(result.message || "Save failed");
       }
+
+      // Notify listeners about successful save
+      this.notifyListeners({
+        type: "SAVE_FILE_SUCCESS",
+        filePath,
+        content,
+        result: result.data,
+      });
+
+      // Update file system context if available (for UI updates)
+      if (this.fileSystemContext && this.fileSystemContext.updateFileContent) {
+        try {
+          this.fileSystemContext.updateFileContent(filePath, content);
+        } catch (contextError) {
+          console.warn("Failed to update file system context:", contextError);
+        }
+      }
+
+      return result.data;
     } catch (error) {
       // Notify listeners about save error
       this.notifyListeners({
-        type: 'SAVE_FILE_ERROR',
+        type: "SAVE_FILE_ERROR",
         filePath,
         content,
-        error: error.message
+        error: error.message,
       });
-      
+
       throw error;
     }
   }
-
-  // Create a new file
-  async createFile(fileName, content = '', dirPath = '/') {
+  // **NEW: Create a new file via backend**
+  async createFile(fileName, content = "", dirPath = "/") {
     try {
-      if (this.fileSystemContext) {
-        const result = await this.fileSystemContext.createFile(fileName, content, dirPath);
-        
-        this.notifyListeners({
-          type: 'FILE_CREATED',
-          filePath: `${dirPath}/${fileName}`.replace('//', '/'),
-          content,
-          result
-        });
-
-        return result;
-      } else {
-        throw new Error('File system context not available');
-      }
-    } catch (error) {
       this.notifyListeners({
-        type: 'FILE_CREATE_ERROR',
+        type: "CREATE_FILE_START",
         fileName,
         dirPath,
-        error: error.message
       });
-      
+
+      const result = await this.apiCall("/filesystem/file", {
+        method: "POST",
+        body: JSON.stringify({
+          name: fileName,
+          content: content,
+          parentPath: dirPath,
+        }),
+      });
+
+      const filePath = `${dirPath}/${fileName}`.replace("//", "/");
+
+      this.notifyListeners({
+        type: "FILE_CREATED",
+        filePath,
+        content,
+        result: result.data,
+      });
+
+      // Update file system context if available
+      if (this.fileSystemContext && this.fileSystemContext.addFile) {
+        try {
+          this.fileSystemContext.addFile(result.data);
+        } catch (contextError) {
+          console.warn("Failed to update file system context:", contextError);
+        }
+      }
+
+      return result.data;
+    } catch (error) {
+      this.notifyListeners({
+        type: "FILE_CREATE_ERROR",
+        fileName,
+        dirPath,
+        error: error.message,
+      });
+
       throw error;
     }
   }
 
-  // Read file content from file system
+  // **ENHANCED: Read file content from backend or cache**
   async readFile(filePath) {
     try {
+      // Try file system context first (for performance)
       if (this.fileSystemContext) {
         const fileInfo = this.fileSystemContext.getItemInfo(filePath);
-        return fileInfo ? fileInfo.content || '' : '';
+        if (fileInfo && fileInfo.content !== undefined) {
+          return fileInfo.content;
+        }
       }
-      return '';
+
+      // Fallback to backend API
+      const fileData = await this.loadFile(filePath);
+      return fileData.content || "";
     } catch (error) {
-      console.error('Error reading file:', error);
-      return '';
+      console.error("Error reading file:", error);
+      return "";
+    }
+  }
+
+  // **NEW: Additional backend operations**
+  async deleteFile(filePath) {
+    try {
+      const result = await this.apiCall("/filesystem/item/delete", {
+        method: "POST",
+        body: JSON.stringify({
+          itemPath: filePath,
+        }),
+      });
+
+      this.notifyListeners({
+        type: "FILE_DELETED",
+        filePath,
+        result,
+      });
+
+      return result;
+    } catch (error) {
+      this.notifyListeners({
+        type: "FILE_DELETE_ERROR",
+        filePath,
+        error: error.message,
+      });
+      throw error;
+    }
+  }
+
+  async renameFile(filePath, newName) {
+    try {
+      const result = await this.apiCall("/filesystem/item/rename", {
+        method: "POST",
+        body: JSON.stringify({
+          itemPath: filePath,
+          newName: newName,
+        }),
+      });
+
+      this.notifyListeners({
+        type: "FILE_RENAMED",
+        oldPath: filePath,
+        newPath: result.data.path,
+        result: result.data,
+      });
+
+      return result.data;
+    } catch (error) {
+      this.notifyListeners({
+        type: "FILE_RENAME_ERROR",
+        filePath,
+        newName,
+        error: error.message,
+      });
+      throw error;
+    }
+  }
+
+  async searchFiles(query, type = null) {
+    try {
+      let url = `/filesystem/search?query=${encodeURIComponent(query)}`;
+      if (type) {
+        url += `&type=${type}`;
+      }
+
+      const result = await this.apiCall(url);
+      return result.data;
+    } catch (error) {
+      console.error("Error searching files:", error);
+      throw error;
     }
   }
 
@@ -186,11 +377,11 @@ class FileService {
 
   // Notify all listeners
   notifyListeners(event) {
-    this.listeners.forEach(callback => {
+    this.listeners.forEach((callback) => {
       try {
         callback(event);
       } catch (error) {
-        console.error('Error in file service listener:', error);
+        console.error("Error in file service listener:", error);
       }
     });
   }
@@ -208,15 +399,38 @@ class FileService {
   // Get list of text-editable file extensions
   getEditableExtensions() {
     return [
-      'txt', 'js', 'jsx', 'ts', 'tsx', 'html', 'css', 'json', 'md',
-      'py', 'java', 'cpp', 'c', 'php', 'rb', 'go', 'rs', 'swift',
-      'kt', 'sql', 'xml', 'yaml', 'yml', 'log', 'config', 'env'
+      "txt",
+      "js",
+      "jsx",
+      "ts",
+      "tsx",
+      "html",
+      "css",
+      "json",
+      "md",
+      "py",
+      "java",
+      "cpp",
+      "c",
+      "php",
+      "rb",
+      "go",
+      "rs",
+      "swift",
+      "kt",
+      "sql",
+      "xml",
+      "yaml",
+      "yml",
+      "log",
+      "config",
+      "env",
     ];
   }
 
   // Check if a file is editable based on its extension
   isFileEditable(filePath) {
-    const extension = filePath.split('.').pop()?.toLowerCase();
+    const extension = filePath.split(".").pop()?.toLowerCase();
     return this.getEditableExtensions().includes(extension);
   }
 }

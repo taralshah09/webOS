@@ -7,11 +7,15 @@ import cookieParser from "cookie-parser";
 import http from "http";
 import authRoutes from './src/routes/auth.routes.js';
 import desktopRoutes from './src/routes/desktop.routes.js';
+import fileSystemRoutes from './src/routes/fileSystem.routes.js'; // ADD THIS LINE
 import { initializeSystemApps } from './src/services/appService.services.js';
+import { initializeUserFileSystem } from './src/services/fileSystem.services.js'; // ADD THIS LINE
+
 const app = express();
 const PORT = process.env.PORT || 5000;
 const MONGO_URL = process.env.MONGO_URL;
 const FRONTEND_URL = process.env.FRONTEND_URL;
+
 // MongoDB connection
 mongoose
   .connect(MONGO_URL)
@@ -35,12 +39,10 @@ app.use(
   })
 );
 
-
 // Routes
 app.use('/api/auth', authRoutes);
 app.use('/api/desktop', desktopRoutes);
-
-
+app.use('/api/filesystem', fileSystemRoutes); // ADD THIS LINE
 
 // Server start
 app.listen(PORT, () => console.log("Server running on PORT : " + PORT));

@@ -2,10 +2,13 @@ import React, { useState, useRef, useEffect, useCallback } from 'react';
 import Editor from '@monaco-editor/react';
 import fileService from '../../services/fileService';
 import { useFileSystem } from '../../contexts/FileSystemContext';
+import { useAuth } from '../../contexts/AuthContext'; // ADD THIS IMPORT
 import './Notepad.css';
 
 const Notepad = ({ initialContent, initialFilePath, initialLanguage, onTitleChange }) => {
   const fileSystemContext = useFileSystem();
+  const authContext = useAuth(); // ADD THIS LINE
+  
   const [content, setContent] = useState(initialContent || `Welcome to Web OS Notepad!
 
 This is a professional text editor powered by Monaco Editor - the same editor used in Visual Studio Code.
@@ -17,10 +20,13 @@ Features:
 • Multiple themes and customization options
 • Professional editing experience
 • Integrated file system save/load
+• **Auto-save functionality** - saves automatically after 2 seconds of inactivity
+• **Backend integration** - files are saved to the database
 
 You can:  
 - Type and edit text with advanced features
-- Save files directly to the file system
+- Save files directly to the file system (Ctrl+S)
+- Files auto-save after 2 seconds of inactivity
 - Open files from File Explorer
 - Resize this window
 - Move it around the desktop
@@ -36,14 +42,28 @@ Try changing the language mode in the bottom status bar!`);
   const [isModified, setIsModified] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [saveStatus, setSaveStatus] = useState('');
+  const [lastSaveTime, setLastSaveTime] = useState(null);
   const [isMounted, setIsMounted] = useState(true);
+  
+  const [autoSaveEnabled, setAutoSaveEnabled] = useState(true);
+  const autoSaveTimeoutRef = useRef(null);
+  const AUTOSAVE_DELAY = 2000;
+  
   const editorRef = useRef(null);
   const unregistersRef = useRef([]);
 
-  // Set file service context on mount
+  // **NEW: Set auth context in file service**
   useEffect(() => {
     fileService.setFileSystemContext(fileSystemContext);
-  }, [fileSystemContext]);
+    fileService.setAuthContext(authContext); // ADD THIS LINE
+    
+    // Debug authentication status
+    console.log('🔐 Notepad Auth Status:', {
+      isAuthenticated: authContext.isAuthenticated(),
+      hasToken: !!authContext.token,
+      tokenPreview: authContext.token ? authContext.token.substring(0, 20) + '...' : 'none'
+    });
+  }, [fileSystemContext, authContext]);
 
   // Update window title when file changes
   useEffect(() => {
@@ -67,6 +87,43 @@ Try changing the language mode in the bottom status bar!`);
     }
   }, [initialContent, initialFilePath, initialLanguage]);
 
+  // Auto-save functionality
+  const scheduleAutoSave = useCallback(() => {
+    if (!autoSaveEnabled || !currentFilePath || isSaving) {
+      return;
+    }
+
+    // Check authentication before scheduling auto-save
+    if (!authContext.isAuthenticated()) {
+      console.warn('🔐 Auto-save skipped: not authenticated');
+      setSaveStatus('⚠️ Not authenticated - auto-save disabled');
+      return;
+    }
+
+    if (autoSaveTimeoutRef.current) {
+      clearTimeout(autoSaveTimeoutRef.current);
+    }
+
+    autoSaveTimeoutRef.current = setTimeout(async () => {
+      if (isMounted && isModified && currentFilePath && !isSaving) {
+        try {
+          console.log('Auto-saving file:', currentFilePath);
+          await handleSave(true);
+        } catch (error) {
+          console.error('Auto-save failed:', error);
+        }
+      }
+    }, AUTOSAVE_DELAY);
+  }, [autoSaveEnabled, currentFilePath, isSaving, isModified, isMounted, authContext]);
+
+  useEffect(() => {
+    return () => {
+      if (autoSaveTimeoutRef.current) {
+        clearTimeout(autoSaveTimeoutRef.current);
+      }
+    };
+  }, []);
+
   // Stable callback for opening files
   const openFileInEditor = useCallback((filePath, fileContent, fileType) => {
     if (!isMounted) return;
@@ -75,29 +132,16 @@ Try changing the language mode in the bottom status bar!`);
     setCurrentFilePath(filePath);
     setIsModified(false);
     setSaveStatus('');
+    setLastSaveTime(new Date());
     
-    // Set language based on file type
     const languageMap = {
-      'javascript': 'javascript',
-      'typescript': 'typescript',
-      'html': 'html',
-      'css': 'css',
-      'json': 'json',
-      'markdown': 'markdown',
-      'python': 'python',
-      'java': 'java',
-      'cpp': 'cpp',
-      'c': 'c',
-      'php': 'php',
-      'ruby': 'ruby',
-      'go': 'go',
-      'rust': 'rust',
-      'swift': 'swift',
-      'kotlin': 'kotlin',
-      'sql': 'sql',
-      'xml': 'xml',
-      'yaml': 'yaml',
-      'text': 'plaintext'
+      'javascript': 'javascript', 'typescript': 'typescript',
+      'html': 'html', 'css': 'css', 'json': 'json',
+      'markdown': 'markdown', 'python': 'python',
+      'java': 'java', 'cpp': 'cpp', 'c': 'c',
+      'php': 'php', 'ruby': 'ruby', 'go': 'go',
+      'rust': 'rust', 'swift': 'swift', 'kotlin': 'kotlin',
+      'sql': 'sql', 'xml': 'xml', 'yaml': 'yaml', 'text': 'plaintext'
     };
     
     setLanguage(languageMap[fileType] || 'plaintext');
@@ -108,10 +152,8 @@ Try changing the language mode in the bottom status bar!`);
     const unregisters = [];
     
     try {
-      // Register for text files
       unregisters.push(fileService.registerFileOpener('text', openFileInEditor));
 
-      // Register for all supported file types
       const supportedTypes = [
         'javascript', 'typescript', 'html', 'css', 'json', 'markdown',
         'python', 'java', 'cpp', 'c', 'php', 'ruby', 'go', 'rust',
@@ -141,24 +183,54 @@ Try changing the language mode in the bottom status bar!`);
     };
   }, [openFileInEditor]);
 
-  // Listen for file service events
+  // **ENHANCED: Listen for file service events with auth checking**
   useEffect(() => {
     const unsubscribe = fileService.addListener((event) => {
       if (!isMounted) return;
 
       switch (event.type) {
+        case 'SAVE_FILE_START':
+          if (event.filePath === currentFilePath) {
+            setIsSaving(true);
+            setSaveStatus('💾 Saving...');
+          }
+          break;
+          
         case 'SAVE_FILE_SUCCESS':
           if (event.filePath === currentFilePath) {
             setIsModified(false);
+            setIsSaving(false);
+            setLastSaveTime(new Date());
             setSaveStatus('✅ Saved successfully');
             setTimeout(() => setSaveStatus(''), 3000);
           }
           break;
+          
         case 'SAVE_FILE_ERROR':
           if (event.filePath === currentFilePath) {
-            setSaveStatus(`❌ Save failed: ${event.error}`);
+            setIsSaving(false);
+            if (event.error.includes('Authentication') || event.error.includes('token')) {
+              setSaveStatus('🔐 Authentication required - please log in');
+              setAutoSaveEnabled(false); // Disable auto-save if auth fails
+            } else {
+              setSaveStatus(`❌ Save failed: ${event.error}`);
+            }
             setTimeout(() => setSaveStatus(''), 5000);
           }
+          break;
+
+        case 'LOAD_FILE_START':
+          setSaveStatus('📂 Loading...');
+          break;
+
+        case 'LOAD_FILE_SUCCESS':
+          setSaveStatus('✅ File loaded');
+          setTimeout(() => setSaveStatus(''), 2000);
+          break;
+
+        case 'LOAD_FILE_ERROR':
+          setSaveStatus(`❌ Load failed: ${event.error}`);
+          setTimeout(() => setSaveStatus(''), 5000);
           break;
       }
     });
@@ -184,13 +256,16 @@ Try changing the language mode in the bottom status bar!`);
   const handleEditorDidMount = useCallback((editor) => {
     editorRef.current = editor;
     
-    // Add keyboard shortcuts
     editor.addCommand(window.monaco.KeyMod.CtrlCmd | window.monaco.KeyCode.KeyS, () => {
       handleSave();
     });
 
     editor.addCommand(window.monaco.KeyMod.CtrlCmd | window.monaco.KeyMod.Shift | window.monaco.KeyCode.KeyS, () => {
       handleSaveAs();
+    });
+
+    editor.addCommand(window.monaco.KeyMod.CtrlCmd | window.monaco.KeyCode.KeyO, () => {
+      handleOpen();
     });
 
     try {
@@ -208,7 +283,11 @@ Try changing the language mode in the bottom status bar!`);
     setContent(value || '');
     setIsModified(true);
     setSaveStatus('');
-  }, [isMounted]);
+    
+    if (currentFilePath) {
+      scheduleAutoSave();
+    }
+  }, [isMounted, currentFilePath, scheduleAutoSave]);
 
   const handleLanguageChange = useCallback((e) => {
     if (!isMounted) return;
@@ -240,32 +319,59 @@ Try changing the language mode in the bottom status bar!`);
     setIsModified(false);
     setLanguage('plaintext');
     setSaveStatus('');
+    setLastSaveTime(null);
   }, [isMounted, isModified]);
 
-  const handleSave = useCallback(async () => {
+  // **ENHANCED: Save function with auth checking**
+  const handleSave = useCallback(async (isAutoSave = false) => {
     if (!isMounted) return;
+
+    // Check authentication first
+    if (!authContext.isAuthenticated()) {
+      const errorMsg = '🔐 Please log in to save files';
+      setSaveStatus(errorMsg);
+      if (!isAutoSave) {
+        alert('You need to be logged in to save files. Please log in and try again.');
+      }
+      setTimeout(() => setSaveStatus(''), 5000);
+      return;
+    }
     
     if (currentFilePath) {
       try {
-        setIsSaving(true);
-        setSaveStatus('💾 Saving...');
+        if (!isAutoSave) {
+          setIsSaving(true);
+          setSaveStatus('💾 Saving...');
+        }
         
         await fileService.saveFile(currentFilePath, content);
-        // Status will be updated by the listener
+        
+        if (isAutoSave) {
+          console.log('Auto-saved successfully:', currentFilePath);
+        }
       } catch (error) {
         console.error('Error saving file:', error);
-        setSaveStatus(`❌ Save failed: ${error.message}`);
-        setTimeout(() => setSaveStatus(''), 5000);
-      } finally {
-        setIsSaving(false);
+        if (!isAutoSave) {
+          setSaveStatus(`❌ Save failed: ${error.message}`);
+          setTimeout(() => setSaveStatus(''), 5000);
+          setIsSaving(false);
+        }
       }
     } else {
-      handleSaveAs();
+      if (!isAutoSave) {
+        handleSaveAs();
+      }
     }
-  }, [isMounted, currentFilePath, content]);
+  }, [isMounted, currentFilePath, content, authContext]);
 
   const handleSaveAs = useCallback(async () => {
     if (!isMounted) return;
+
+    // Check authentication first
+    if (!authContext.isAuthenticated()) {
+      alert('You need to be logged in to save files. Please log in and try again.');
+      return;
+    }
     
     const fileName = prompt('Enter file name:', currentFilePath ? currentFilePath.split('/').pop() : 'document.txt');
     if (!fileName || !fileName.trim()) return;
@@ -274,37 +380,20 @@ Try changing the language mode in the bottom status bar!`);
       setIsSaving(true);
       setSaveStatus('💾 Saving...');
       
-      const dirPath = currentFilePath ? currentFilePath.split('/').slice(0, -1).join('/') || '/' : '/';
+      const dirPath = currentFilePath ? currentFilePath.split('/').slice(0, -1).join('/') || '/' : '/Documents';
       const newFilePath = `${dirPath}/${fileName.trim()}`.replace('//', '/');
       
       await fileService.saveFile(newFilePath, content);
       setCurrentFilePath(newFilePath);
       
-      // Determine language from file extension
       const extension = fileName.split('.').pop()?.toLowerCase();
       const languageMap = {
-        'js': 'javascript',
-        'jsx': 'javascript',
-        'ts': 'typescript',
-        'tsx': 'typescript',
-        'html': 'html',
-        'css': 'css',
-        'json': 'json',
-        'md': 'markdown',
-        'py': 'python',
-        'java': 'java',
-        'cpp': 'cpp',
-        'c': 'c',
-        'php': 'php',
-        'rb': 'ruby',
-        'go': 'go',
-        'rs': 'rust',
-        'swift': 'swift',
-        'kt': 'kotlin',
-        'sql': 'sql',
-        'xml': 'xml',
-        'yaml': 'yaml',
-        'yml': 'yaml'
+        'js': 'javascript', 'jsx': 'javascript', 'ts': 'typescript', 'tsx': 'typescript',
+        'html': 'html', 'css': 'css', 'json': 'json', 'md': 'markdown',
+        'py': 'python', 'java': 'java', 'cpp': 'cpp', 'c': 'c',
+        'php': 'php', 'rb': 'ruby', 'go': 'go', 'rs': 'rust',
+        'swift': 'swift', 'kt': 'kotlin', 'sql': 'sql',
+        'xml': 'xml', 'yaml': 'yaml', 'yml': 'yaml'
       };
       
       if (languageMap[extension]) {
@@ -315,81 +404,34 @@ Try changing the language mode in the bottom status bar!`);
       console.error('Error saving file as:', error);
       setSaveStatus(`❌ Save failed: ${error.message}`);
       setTimeout(() => setSaveStatus(''), 5000);
-    } finally {
       setIsSaving(false);
     }
-  }, [isMounted, content, currentFilePath]);
+  }, [isMounted, content, currentFilePath, authContext]);
 
-  const handleOpen = useCallback(() => {
+  const handleOpen = useCallback(async () => {
     if (!isMounted) return;
     
     if (isModified) {
       const save = window.confirm('Do you want to save the current file before opening another?');
       if (save) {
-        handleSave();
+        await handleSave();
       }
     }
     
+    const filePath = prompt('Enter file path to open (e.g., /Documents/myfile.txt):');
+    if (!filePath || !filePath.trim()) return;
+    
     try {
-      const input = document.createElement('input');
-      input.type = 'file';
-      input.accept = '.txt,.js,.jsx,.ts,.tsx,.html,.css,.json,.md,.py,.java,.cpp,.c,.php,.rb,.go,.rs,.swift,.kt,.sql,.xml,.yaml,.yml';
+      setSaveStatus('📂 Loading file...');
+      const fileData = await fileService.loadFile(filePath.trim());
       
-      const handleFileChange = (e) => {
-        const file = e.target.files[0];
-        if (file && isMounted) {
-          const reader = new FileReader();
-          reader.onload = (e) => {
-            if (!isMounted) return;
-            
-            const extension = file.name.split('.').pop().toLowerCase();
-            const languageMap = {
-              'js': 'javascript',
-              'jsx': 'javascript',
-              'ts': 'typescript',
-              'tsx': 'typescript',
-              'html': 'html',
-              'css': 'css',
-              'json': 'json',
-              'md': 'markdown',
-              'py': 'python',
-              'java': 'java',
-              'cpp': 'cpp',
-              'c': 'c',
-              'php': 'php',
-              'rb': 'ruby',
-              'go': 'go',
-              'rs': 'rust',
-              'swift': 'swift',
-              'kt': 'kotlin',
-              'sql': 'sql',
-              'xml': 'xml',
-              'yaml': 'yaml',
-              'yml': 'yaml'
-            };
-            
-            openFileInEditor(file.name, e.target.result, languageMap[extension] || 'text');
-          };
-          
-          reader.onerror = () => {
-            console.error('Error reading file');
-          };
-          
-          reader.readAsText(file);
-        }
-        
-        if (input.parentNode) {
-          input.parentNode.removeChild(input);
-        }
-      };
-      
-      input.onchange = handleFileChange;
-      input.style.display = 'none';
-      document.body.appendChild(input);
-      input.click();
-      
+      if (fileData) {
+        openFileInEditor(filePath.trim(), fileData.content, fileData.mimeType);
+      }
     } catch (error) {
       console.error('Error opening file:', error);
+      setSaveStatus(`❌ Failed to open: ${error.message}`);
+      setTimeout(() => setSaveStatus(''), 5000);
     }
   }, [isMounted, isModified, openFileInEditor, handleSave]);
 
@@ -404,6 +446,12 @@ Try changing the language mode in the bottom status bar!`);
 
   const currentPosition = getCurrentPosition();
 
+  // Format last save time
+  const formatSaveTime = (time) => {
+    if (!time) return '';
+    return time.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+  };
+
   return (
     <div className="notepad-app">
       <div className="notepad-toolbar">
@@ -416,15 +464,32 @@ Try changing the language mode in the bottom status bar!`);
           </button>
           <button 
             className="toolbar-button" 
-            onClick={handleSave} 
-            disabled={isSaving}
-            title="Save File (Ctrl+S)"
+            onClick={() => handleSave()} 
+            disabled={isSaving || !authContext.isAuthenticated()}
+            title={authContext.isAuthenticated() ? "Save File (Ctrl+S)" : "Login required to save"}
           >
             {isSaving ? '⏳' : '💾'} Save
           </button>
-          <button className="toolbar-button" onClick={handleSaveAs} title="Save As (Ctrl+Shift+S)">
+          <button 
+            className="toolbar-button" 
+            onClick={handleSaveAs} 
+            disabled={!authContext.isAuthenticated()}
+            title={authContext.isAuthenticated() ? "Save As (Ctrl+Shift+S)" : "Login required to save"}
+          >
             💾 Save As
           </button>
+        </div>
+
+        <div className="toolbar-section">
+          <label className="toolbar-checkbox">
+            <input
+              type="checkbox"
+              checked={autoSaveEnabled && authContext.isAuthenticated()}
+              onChange={(e) => setAutoSaveEnabled(e.target.checked)}
+              disabled={!authContext.isAuthenticated()}
+            />
+            Auto-save {!authContext.isAuthenticated() && '(Login required)'}
+          </label>
         </div>
         
         <div className="toolbar-section">
@@ -481,6 +546,17 @@ Try changing the language mode in the bottom status bar!`);
             <option value={20}>20px</option>
             <option value={24}>24px</option>
           </select>
+        </div>
+
+        {/* **NEW: Authentication status indicator** */}
+        <div className="toolbar-section">
+          <span className={`auth-status ${authContext.isAuthenticated() ? 'authenticated' : 'not-authenticated'}`}>
+            {authContext.isAuthenticated() ? (
+              <>🔐 {authContext.user?.username || 'Logged in'}</>
+            ) : (
+              <>🔓 Not logged in</>
+            )}
+          </span>
         </div>
 
         {saveStatus && (
@@ -564,11 +640,20 @@ Try changing the language mode in the bottom status bar!`);
         {currentFilePath && (
           <span className="status-item">📁 {currentFilePath}</span>
         )}
+        {lastSaveTime && (
+          <span className="status-item">💾 Last saved: {formatSaveTime(lastSaveTime)}</span>
+        )}
         {isModified && (
           <span className="status-item modified">● Modified</span>
         )}
         {isSaving && (
           <span className="status-item saving">⏳ Saving...</span>
+        )}
+        {autoSaveEnabled && currentFilePath && authContext.isAuthenticated() && (
+          <span className="status-item auto-save">🔄 Auto-save ON</span>
+        )}
+        {!authContext.isAuthenticated() && (
+          <span className="status-item auth-warning">⚠️ Login required for saving</span>
         )}
       </div>
     </div>
