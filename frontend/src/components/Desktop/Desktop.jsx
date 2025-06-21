@@ -20,7 +20,6 @@ const Desktop = ({ createWindow, windows = [], onWindowFocus, onWindowMinimize }
   const [iconContextMenu, setIconContextMenu] = useState({ visible: false, x: 0, y: 0, icon: null });
   const [desktopIcons, setDesktopIcons] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
   const [wallpaper, setWallpaper] = useState(() => localStorage.getItem('desktopWallpaper') || '');
   const [showWallpaperModal, setShowWallpaperModal] = useState(false);
 
@@ -30,13 +29,14 @@ const Desktop = ({ createWindow, windows = [], onWindowFocus, onWindowMinimize }
   useEffect(() => {
     const fetchDesktop = async () => {
       if (!token) {
+        console.log('No token available, using default desktop icons');
         setLoading(false);
         return;
       }
 
       try {
         setLoading(true);
-        setError(null);
+        console.log('Fetching desktop configuration from backend...');
         const response = await getDesktop(token);
 
         if (response.success && response.data) {
@@ -51,84 +51,88 @@ const Desktop = ({ createWindow, windows = [], onWindowFocus, onWindowMinimize }
             visible: icon.visible !== false
           })) || [];
 
-          console.log('Loaded desktopIcons:', transformedIcons);
-
+          console.log('✅ Loaded desktop icons from backend:', transformedIcons);
           setDesktopIcons(transformedIcons);
+        } else {
+          console.log('No backend data, using default icons');
+          setDefaultIcons();
         }
       } catch (err) {
-        console.error('Error fetching desktop:', err);
-        setError(err.message);
-        // Fallback to default icons if API fails
-        setDesktopIcons([
-          {
-            id: 1,
-            name: 'My Computer',
-            icon: '🖥️',
-            x: 50,
-            y: 50,
-            type: 'computer'
-          },
-          {
-            id: 2,
-            name: 'Documents',
-            icon: '📁',
-            x: 50,
-            y: 100,
-            type: 'folder'
-          },
-          {
-            id: 3,
-            name: 'Recycle Bin',
-            icon: '🗑️',
-            x: 50,
-            y: 150,
-            type: 'trash'
-          },
-          {
-            id: 4,
-            name: 'Settings',
-            icon: '⚙️',
-            x: 50,
-            y: 250,
-            type: 'settings'
-          },
-          {
-            id: 5,
-            name: 'Notepad',
-            icon: '📝',
-            x: 50,
-            y: 350,
-            type: 'notepad'
-          },
-          {
-            id: 6,
-            name: 'File Explorer',
-            icon: '📂',
-            x: 50,
-            y: 450,
-            type: 'file-explorer'
-          },
-          {
-            id: 7,
-            name: 'Browser',
-            icon: '🌐',
-            x: 50,
-            y: 550,
-            type: 'browser'
-          },
-          {
-            id: 8,
-            name: 'Terminal',
-            icon: '🖳',
-            x: 50,
-            y: 650,
-            type: 'terminal'
-          }
-        ]);
-
+        console.error('❌ Error fetching desktop from backend:', err);
+        console.log('Using default desktop icons as fallback');
+        setDefaultIcons();
       } finally {
         setLoading(false);
       }
+    };
+
+    const setDefaultIcons = () => {
+      setDesktopIcons([
+        {
+          id: 1,
+          name: 'My Computer',
+          icon: '🖥️',
+          x: 50,
+          y: 50,
+          type: 'computer'
+        },
+        {
+          id: 2,
+          name: 'Documents',
+          icon: '📁',
+          x: 50,
+          y: 100,
+          type: 'folder'
+        },
+        {
+          id: 3,
+          name: 'Recycle Bin',
+          icon: '🗑️',
+          x: 50,
+          y: 150,
+          type: 'trash'
+        },
+        {
+          id: 4,
+          name: 'Settings',
+          icon: '⚙️',
+          x: 50,
+          y: 250,
+          type: 'settings'
+        },
+        {
+          id: 5,
+          name: 'Notepad',
+          icon: '📝',
+          x: 50,
+          y: 350,
+          type: 'notepad'
+        },
+        {
+          id: 6,
+          name: 'File Explorer',
+          icon: '📂',
+          x: 50,
+          y: 450,
+          type: 'file-explorer'
+        },
+        {
+          id: 7,
+          name: 'Browser',
+          icon: '🌐',
+          x: 50,
+          y: 550,
+          type: 'browser'
+        },
+        {
+          id: 8,
+          name: 'Terminal',
+          icon: '🖳',
+          x: 50,
+          y: 650,
+          type: 'terminal'
+        }
+      ]);
     };
 
     fetchDesktop();
@@ -433,16 +437,8 @@ const Desktop = ({ createWindow, windows = [], onWindowFocus, onWindowMinimize }
           </div>
         )}
 
-        {/* Error State */}
-        {error && !loading && (
-          <div className="desktop-error">
-            <p>Error loading desktop: {error}</p>
-            <button onClick={() => window.location.reload()}>Retry</button>
-          </div>
-        )}
-
         {/* Desktop Icons */}
-        {!loading && !error && desktopIcons.map(icon => (
+        {!loading && desktopIcons.map(icon => (
           <DesktopIcon
             key={icon.id}
             icon={icon}

@@ -1,7 +1,7 @@
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api/desktop';
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
 
 export const getDesktop = async (token) => {
-  const res = await fetch(`${API_URL}/`, {
+  const res = await fetch(`${API_URL}/desktop`, {
     method: 'GET',
     headers: {
       'Content-Type': 'application/json',
@@ -13,7 +13,7 @@ export const getDesktop = async (token) => {
 };
 
 export const updateDesktopIcons = async (desktopIcons, token) => {
-  const res = await fetch(`${API_URL}/icons`, {
+  const res = await fetch(`${API_URL}/desktop/icons`, {
     method: 'PUT',
     headers: {
       'Content-Type': 'application/json',
@@ -26,7 +26,7 @@ export const updateDesktopIcons = async (desktopIcons, token) => {
 };
 
 export const updateIconPosition = async (iconId, position, token) => {
-  const res = await fetch(`${API_URL}/icon-position`, {
+  const res = await fetch(`${API_URL}/desktop/icon-position`, {
     method: 'PUT',
     headers: {
       'Content-Type': 'application/json',
@@ -40,7 +40,7 @@ export const updateIconPosition = async (iconId, position, token) => {
 
 export const updateWallpaper = async (wallpaper, token) => {
   try {
-    const response = await fetch(`${API_URL}/wallpaper`, {
+    const response = await fetch(`${API_URL}/desktop/wallpaper`, {
       method: 'PUT',
       headers: {
         'Authorization': `Bearer ${token}`,

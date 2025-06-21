@@ -114,16 +114,16 @@ export const FileSystemProvider = ({ children }) => {
 
   // **NEW: Backend API helper**
   const apiCall = useCallback(async (url, options = {}) => {
-    const apiBaseUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
+    const apiBaseUrl = import.meta.env.VITE_API_URL || 'https://webos-opx9.onrender.com/api';
     const fullUrl = `${apiBaseUrl}${url}`;
-    
+
     console.log('🌐 Making API call:', {
       url: fullUrl,
       method: options.method || 'GET',
       hasToken: !!token,
       tokenLength: token ? token.length : 0
     });
-    
+
     const response = await fetch(fullUrl, {
       headers: {
         'Content-Type': 'application/json',
@@ -141,7 +141,7 @@ export const FileSystemProvider = ({ children }) => {
     });
 
     const result = await response.json();
-    
+
     if (!response.ok) {
       console.error('❌ API Error:', {
         status: response.status,
@@ -150,12 +150,12 @@ export const FileSystemProvider = ({ children }) => {
       });
       throw new Error(result.message || 'API request failed');
     }
-    
+
     console.log('✅ API Success:', {
       url: fullUrl,
       dataKeys: result.data ? Object.keys(result.data) : 'no data'
     });
-    
+
     return result;
   }, [token]);
 
@@ -165,15 +165,15 @@ export const FileSystemProvider = ({ children }) => {
       console.log('No token, cannot initialize file system');
       return;
     }
-    
+
     try {
       console.log('🔄 Manually initializing file system...');
       setLoading(true);
-      
+
       const result = await apiCall('/filesystem/initialize', {
         method: 'POST'
       });
-      
+
       if (result.success) {
         console.log('✅ File system initialized successfully');
         // Reload the file system after initialization
@@ -202,10 +202,10 @@ export const FileSystemProvider = ({ children }) => {
   // **NEW: Test backend connectivity**
   const testBackendConnection = useCallback(async () => {
     try {
-      const apiBaseUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
+      const apiBaseUrl = import.meta.env.VITE_API_URL || 'https://webos-opx9.onrender.com';
       const response = await fetch(`${apiBaseUrl}/health`);
       const result = await response.json();
-      
+
       console.log('🏥 Backend health check:', result);
       return result.success;
     } catch (error) {
@@ -220,14 +220,14 @@ export const FileSystemProvider = ({ children }) => {
       console.log('❌ No token, skipping backend load');
       return;
     }
-    
+
     console.log('🔐 Authentication check:', {
       hasToken: !!token,
       tokenLength: token.length,
       isAuthenticated: isAuthenticated(),
       user: user
     });
-    
+
     // **NEW: Test backend connectivity first**
     const backendHealthy = await testBackendConnection();
     if (!backendHealthy) {
@@ -236,23 +236,23 @@ export const FileSystemProvider = ({ children }) => {
       initializeFileSystem();
       return;
     }
-    
+
     try {
       setLoading(true);
       setError(null);
-      
+
       console.log('🔄 Loading file system from backend...');
       const result = await apiCall('/filesystem');
-      
+
       console.log('📊 Backend response:', result);
-      
+
       if (result.data && result.data.fileSystem) {
         const fileSystemData = result.data.fileSystem;
         const totalItems = result.data.totalItems || 0;
-        
+
         console.log(`✅ File system loaded from backend: ${totalItems} items`);
         console.log('📁 File system structure:', Object.keys(fileSystemData));
-        
+
         if (totalItems === 0 || Object.keys(fileSystemData).length === 0) {
           console.log('📁 Empty file system received, attempting to initialize...');
           // Try to initialize the file system manually
@@ -260,7 +260,7 @@ export const FileSystemProvider = ({ children }) => {
             const initResult = await apiCall('/filesystem/initialize', {
               method: 'POST'
             });
-            
+
             if (initResult.success) {
               console.log('✅ File system initialized successfully');
               // Reload the file system after initialization
@@ -285,7 +285,7 @@ export const FileSystemProvider = ({ children }) => {
         console.log('📁 No backend file system found, using default');
         initializeFileSystem();
       }
-      
+
     } catch (error) {
       console.error('❌ Error loading from backend:', error);
       setError(error.message);
@@ -359,14 +359,14 @@ export const FileSystemProvider = ({ children }) => {
   const getCurrentDirectoryContents = useCallback((path = currentPath) => {
     console.log('🔍 Getting contents for path:', path);
     console.log('📁 Current file system keys:', Object.keys(fileSystem));
-    
+
     // Get the directory for the current path
     const directory = fileSystem[path];
     if (!directory) {
       console.log('❌ Directory not found:', path);
       return [];
     }
-    
+
     if (directory.type !== 'folder') {
       console.log('❌ Path is not a folder:', path);
       return [];
