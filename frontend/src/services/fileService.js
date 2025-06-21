@@ -13,19 +13,37 @@ class FileService {
 
   // Get auth token from your auth system
   getAuthToken() {
-    // Adjust this based on your auth implementation
-    return (
-      localStorage.getItem("token") || sessionStorage.getItem("token") || ""
-    );
+    // Get token from webos_token in localStorage (your specific key)
+    const webosToken = localStorage.getItem('webos_token');
+    if (webosToken && webosToken.trim()) {
+      return webosToken.trim();
+    }
+
+    // Fallback to other possible token keys
+    const fallbackKeys = ['token', 'authToken', 'accessToken', 'jwt'];
+    for (const key of fallbackKeys) {
+      const token = localStorage.getItem(key) || sessionStorage.getItem(key);
+      if (token && token.trim()) {
+        return token.trim();
+      }
+    }
+
+    console.error('❌ No authentication token found');
+    return null;
   }
 
   setAuthContext(authContext) {
     this.authContext = authContext;
+    console.log('🔐 Auth context set for FileService');
   }
 
-  // API call helper
+  // **ENHANCED: API call helper with better error handling**
   async apiCall(url, options = {}) {
-    const token = localStorage.getItem("webos_token");
+    const token = this.getAuthToken();
+    
+    if (!token) {
+      throw new Error('Authentication token not found. Please log in again.');
+    }
 
     try {
       const response = await fetch(`${this.apiBaseUrl}${url}`, {
@@ -40,6 +58,11 @@ class FileService {
       const result = await response.json();
 
       if (!response.ok) {
+        if (response.status === 401) {
+          // Clear invalid token
+          localStorage.removeItem('webos_token');
+          throw new Error('Authentication failed. Please log in again.');
+        }
         throw new Error(
           result.message || `HTTP ${response.status}: ${response.statusText}`
         );
@@ -55,6 +78,7 @@ class FileService {
   // Set file system context for save operations
   setFileSystemContext(context) {
     this.fileSystemContext = context;
+    console.log('📁 File system context set for FileService');
   }
 
   // Register a callback for opening files
@@ -78,7 +102,13 @@ class FileService {
   }
 
   // Open a file with the appropriate application
-  openFile(filePath, fileContent, fileType) {
+  openFile(filePath, fileContent) {
+    // **NEW: Validate filePath is a string**
+    if (typeof filePath !== 'string') {
+      console.error('Invalid filePath provided to openFile:', filePath);
+      return null;
+    }
+    
     const extension = filePath.split(".").pop()?.toLowerCase();
 
     // Map file extensions to file types
@@ -135,7 +165,7 @@ class FileService {
     return null;
   }
 
-  // **NEW: Load file from backend**
+  // Load file from backend
   async loadFile(filePath) {
     try {
       this.notifyListeners({
@@ -164,9 +194,19 @@ class FileService {
     }
   }
 
-  // **ENHANCED: Save a file to the backend**
-  async saveFile(filePath, content, options = {}) {
-    const token = localStorage.getItem("webos_token");
+  // **NEW: Helper function to safely extract filename and directory**
+  _getFileNameAndDir(filePath) {
+    if (typeof filePath !== 'string') {
+      return { fileName: 'unknown', dirPath: '/' };
+    }
+    const fileName = filePath.split('/').pop() || 'unknown';
+    const dirPath = filePath.split('/').slice(0, -1).join('/') || '/';
+    return { fileName, dirPath };
+  }
+
+  // **ENHANCED: Save file with proper frontend-backend sync**
+  async saveFile(filePath, content) {
+    const token = this.getAuthToken();
     if (!token) {
       throw new Error("Please log in to save files");
     }
@@ -179,13 +219,14 @@ class FileService {
         content,
       });
 
-      // **CORRECTED: Make direct API call with proper Authorization header**
-      const apiBaseUrl = import.meta.env.VITE_API_URL || "http://localhost:5000/api";
-      const response = await fetch(`${apiBaseUrl}/filesystem/file/save`, {
+      console.log('💾 Saving file to backend:', filePath);
+
+      // **STEP 1: Save to backend API first**
+      const response = await fetch(`${this.apiBaseUrl}/filesystem/file/save`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`, // **FIX: Actually use the token in headers**
+          Authorization: `Bearer ${token}`,
         },
         body: JSON.stringify({
           filePath: filePath,
@@ -196,7 +237,54 @@ class FileService {
       const result = await response.json();
 
       if (!response.ok) {
-        throw new Error(result.message || "Save failed");
+        throw new Error(result.message || "Failed to save to backend");
+      }
+
+      console.log('✅ Backend save successful:', result);
+
+      // **STEP 2: Update frontend file system context**
+      if (this.fileSystemContext) {
+        try {
+          // Check if file exists in frontend context
+          const existingFile = this.fileSystemContext.getItemInfo(filePath);
+          
+          if (existingFile) {
+            // **Update existing file content**
+            console.log('📝 Updating existing file in frontend context');
+            if (this.fileSystemContext.updateFileContent) {
+              this.fileSystemContext.updateFileContent(filePath, content);
+            } else if (this.fileSystemContext.saveFile) {
+              // Try alternative method name
+              const { fileName, dirPath } = this._getFileNameAndDir(filePath);
+              await this.fileSystemContext.saveFile(fileName, content, dirPath);
+            }
+          } else {
+            // **Create new file in frontend context**
+            console.log('📄 Creating new file in frontend context');
+            if (this.fileSystemContext.addFile) {
+              // Add file directly with backend result
+              const { fileName } = this._getFileNameAndDir(filePath);
+              this.fileSystemContext.addFile({
+                name: fileName,
+                path: filePath,
+                content: content,
+                type: 'file',
+                size: content.length,
+                modified: new Date().toISOString(),
+                created: new Date().toISOString(),
+                extension: filePath.split('.').pop()?.toLowerCase() || '',
+                ...result.data
+              });
+            } else if (this.fileSystemContext.createFile) {
+              const { fileName, dirPath } = this._getFileNameAndDir(filePath);
+              this.fileSystemContext.createFile(fileName, content, dirPath);
+            }
+          }
+          
+        } catch (contextError) {
+          console.warn('⚠️ Failed to update frontend file system context:', contextError);
+          // Don't fail the save if frontend sync fails
+        }
       }
 
       // Notify listeners about successful save
@@ -207,17 +295,12 @@ class FileService {
         result: result.data,
       });
 
-      // Update file system context if available (for UI updates)
-      if (this.fileSystemContext && this.fileSystemContext.updateFileContent) {
-        try {
-          this.fileSystemContext.updateFileContent(filePath, content);
-        } catch (contextError) {
-          console.warn("Failed to update file system context:", contextError);
-        }
-      }
-
+      console.log('✅ File save completed successfully');
       return result.data;
+
     } catch (error) {
+      console.error('❌ File save failed:', error);
+      
       // Notify listeners about save error
       this.notifyListeners({
         type: "SAVE_FILE_ERROR",
@@ -229,7 +312,8 @@ class FileService {
       throw error;
     }
   }
-  // **NEW: Create a new file via backend**
+
+  // **ENHANCED: Create a new file via backend with frontend sync**
   async createFile(fileName, content = "", dirPath = "/") {
     try {
       this.notifyListeners({
@@ -237,6 +321,8 @@ class FileService {
         fileName,
         dirPath,
       });
+
+      console.log('📄 Creating file in backend:', `${dirPath}/${fileName}`);
 
       const result = await this.apiCall("/filesystem/file", {
         method: "POST",
@@ -249,21 +335,34 @@ class FileService {
 
       const filePath = `${dirPath}/${fileName}`.replace("//", "/");
 
+      console.log('✅ Backend file creation successful:', result);
+
+      // **Update frontend file system context**
+      if (this.fileSystemContext && this.fileSystemContext.addFile) {
+        try {
+          this.fileSystemContext.addFile({
+            name: fileName,
+            path: filePath,
+            content: content,
+            type: 'file',
+            size: content.length,
+            modified: new Date().toISOString(),
+            created: new Date().toISOString(),
+            extension: fileName.split('.').pop()?.toLowerCase() || '',
+            ...result.data
+          });
+          console.log('📄 Frontend context updated via addFile');
+        } catch (contextError) {
+          console.warn('⚠️ Failed to update frontend file system context:', contextError);
+        }
+      }
+
       this.notifyListeners({
         type: "FILE_CREATED",
         filePath,
         content,
         result: result.data,
       });
-
-      // Update file system context if available
-      if (this.fileSystemContext && this.fileSystemContext.addFile) {
-        try {
-          this.fileSystemContext.addFile(result.data);
-        } catch (contextError) {
-          console.warn("Failed to update file system context:", contextError);
-        }
-      }
 
       return result.data;
     } catch (error) {
@@ -278,7 +377,7 @@ class FileService {
     }
   }
 
-  // **ENHANCED: Read file content from backend or cache**
+  // Read file content from backend or cache
   async readFile(filePath) {
     try {
       // Try file system context first (for performance)
@@ -298,15 +397,29 @@ class FileService {
     }
   }
 
-  // **NEW: Additional backend operations**
+  // **ENHANCED: Delete file with frontend sync**
   async deleteFile(filePath) {
     try {
+      console.log('🗑️ Deleting file from backend:', filePath);
+
       const result = await this.apiCall("/filesystem/item/delete", {
         method: "POST",
         body: JSON.stringify({
           itemPath: filePath,
         }),
       });
+
+      console.log('✅ Backend deletion successful');
+
+      // **Update frontend file system context**
+      if (this.fileSystemContext && this.fileSystemContext.deleteItems) {
+        try {
+          this.fileSystemContext.deleteItems([filePath]);
+          console.log('🗑️ Frontend context updated via deleteItems');
+        } catch (contextError) {
+          console.warn('⚠️ Failed to update frontend file system context:', contextError);
+        }
+      }
 
       this.notifyListeners({
         type: "FILE_DELETED",
@@ -325,8 +438,11 @@ class FileService {
     }
   }
 
+  // **ENHANCED: Rename file with frontend sync**
   async renameFile(filePath, newName) {
     try {
+      console.log('✏️ Renaming file in backend:', filePath, '→', newName);
+
       const result = await this.apiCall("/filesystem/item/rename", {
         method: "POST",
         body: JSON.stringify({
@@ -334,6 +450,18 @@ class FileService {
           newName: newName,
         }),
       });
+
+      console.log('✅ Backend rename successful:', result);
+
+      // **Update frontend file system context**
+      if (this.fileSystemContext && this.fileSystemContext.renameItem) {
+        try {
+          this.fileSystemContext.renameItem(filePath, newName);
+          console.log('✏️ Frontend context updated via renameItem');
+        } catch (contextError) {
+          console.warn('⚠️ Failed to update frontend file system context:', contextError);
+        }
+      }
 
       this.notifyListeners({
         type: "FILE_RENAMED",
@@ -430,6 +558,12 @@ class FileService {
 
   // Check if a file is editable based on its extension
   isFileEditable(filePath) {
+    // **NEW: Validate filePath is a string**
+    if (typeof filePath !== 'string') {
+      console.warn('Invalid filePath provided to isFileEditable:', filePath);
+      return false;
+    }
+    
     const extension = filePath.split(".").pop()?.toLowerCase();
     return this.getEditableExtensions().includes(extension);
   }

@@ -1,10 +1,32 @@
 import { FileSystem } from "../models/fileSystem.models.js";
 import mongoose from "mongoose";
+import { initializeUserFileSystem } from "../services/fileSystem.services.js";
 
 // Helper function to build hierarchical file system tree
 const buildFileSystemTree = (items) => {
   const tree = {};
   const itemMap = new Map();
+
+  // **NEW: Ensure root folder exists**
+  const rootFolder = {
+    _id: 'root',
+    name: 'Root',
+    type: 'folder',
+    path: '/',
+    content: '',
+    size: 0,
+    mimeType: 'text/plain',
+    extension: '',
+    children: [],
+    permissions: { read: true, write: true, execute: true },
+    metadata: { created: new Date(), modified: new Date(), accessed: new Date(), hidden: false },
+    created: new Date(),
+    modified: new Date(),
+  };
+
+  // Add root folder to tree
+  tree['/'] = rootFolder;
+  itemMap.set('root', rootFolder);
 
   // First pass: create map of all items
   items.forEach((item) => {
@@ -37,6 +59,12 @@ const buildFileSystemTree = (items) => {
       const child = itemMap.get(item._id.toString());
       if (parent && child) {
         parent.children.push(child.path);
+      }
+    } else {
+      // **NEW: If item has no parent, add it to root folder**
+      const child = itemMap.get(item._id.toString());
+      if (child && child.path !== '/') {
+        rootFolder.children.push(child.path);
       }
     }
   });
@@ -80,6 +108,9 @@ export const fileSystemController = {
   getFileSystem: async (req, res) => {
     try {
       const userId = req.userId;
+
+      // **NEW: Initialize file system if user doesn't have one**
+      await initializeUserFileSystem(userId);
 
       // Get all files and folders for the user
       const fileSystemItems = await FileSystem.find({ owner: userId })

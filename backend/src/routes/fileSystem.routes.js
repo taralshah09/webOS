@@ -1,6 +1,7 @@
 import express from 'express';
 import fileSystemController from '../controllers/fileSystem.controller.js';
 import { authenticateJWT } from '../middlewares/auth.middleware.js';
+import { initializeUserFileSystem } from '../services/fileSystem.services.js';
 
 const router = express.Router();
 
@@ -9,6 +10,35 @@ router.use(authenticateJWT);
 
 // Get user's complete file system structure
 router.get('/', fileSystemController.getFileSystem);
+
+// **NEW: Initialize file system for existing users**
+router.post('/initialize', async (req, res) => {
+  try {
+    const userId = req.userId;
+    console.log(`🔄 Initializing file system for user: ${userId}`);
+    
+    const result = await initializeUserFileSystem(userId);
+    
+    if (result) {
+      res.json({
+        success: true,
+        message: 'File system initialized successfully'
+      });
+    } else {
+      res.status(500).json({
+        success: false,
+        message: 'Failed to initialize file system'
+      });
+    }
+  } catch (error) {
+    console.error('Error initializing file system:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to initialize file system',
+      error: error.message
+    });
+  }
+});
 
 // Search files and folders (must be first to avoid conflicts)
 router.get('/search', fileSystemController.searchItems);

@@ -44,5 +44,15 @@ app.use('/api/auth', authRoutes);
 app.use('/api/desktop', desktopRoutes);
 app.use('/api/filesystem', fileSystemRoutes); // ADD THIS LINE
 
+// **NEW: Health check endpoint**
+app.get('/api/health', (req, res) => {
+  res.json({
+    success: true,
+    message: 'Backend is running',
+    timestamp: new Date().toISOString(),
+    database: mongoose.connection.readyState === 1 ? 'connected' : 'disconnected'
+  });
+});
+
 // Server start
 app.listen(PORT, () => console.log("Server running on PORT : " + PORT));

@@ -12,7 +12,7 @@ export const useFileSystem = () => {
 };
 
 export const FileSystemProvider = ({ children }) => {
-  const { token } = useAuth();
+  const { token, isAuthenticated, user } = useAuth();
   const [fileSystem, setFileSystem] = useState({});
   const [currentPath, setCurrentPath] = useState('/');
   const [loading, setLoading] = useState(false);
@@ -20,8 +20,15 @@ export const FileSystemProvider = ({ children }) => {
 
   // Initialize file system with default structure
   useEffect(() => {
-    initializeFileSystem();
-  }, []);
+    if (isAuthenticated()) {
+      // Load from backend if authenticated, otherwise use default
+      loadFromBackend().catch(() => {
+        initializeFileSystem();
+      });
+    } else {
+      initializeFileSystem();
+    }
+  }, [isAuthenticated]);
 
   const initializeFileSystem = useCallback(() => {
     const defaultFileSystem = {
@@ -105,14 +112,270 @@ export const FileSystemProvider = ({ children }) => {
     setFileSystem(defaultFileSystem);
   }, []);
 
+  // **NEW: Backend API helper**
+  const apiCall = useCallback(async (url, options = {}) => {
+    const apiBaseUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
+    const fullUrl = `${apiBaseUrl}${url}`;
+    
+    console.log('🌐 Making API call:', {
+      url: fullUrl,
+      method: options.method || 'GET',
+      hasToken: !!token,
+      tokenLength: token ? token.length : 0
+    });
+    
+    const response = await fetch(fullUrl, {
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`,
+        ...options.headers,
+      },
+      ...options,
+    });
+
+    console.log('📡 API Response:', {
+      status: response.status,
+      statusText: response.statusText,
+      ok: response.ok,
+      url: fullUrl
+    });
+
+    const result = await response.json();
+    
+    if (!response.ok) {
+      console.error('❌ API Error:', {
+        status: response.status,
+        message: result.message,
+        error: result.error
+      });
+      throw new Error(result.message || 'API request failed');
+    }
+    
+    console.log('✅ API Success:', {
+      url: fullUrl,
+      dataKeys: result.data ? Object.keys(result.data) : 'no data'
+    });
+    
+    return result;
+  }, [token]);
+
+  // **NEW: Manually initialize file system**
+  const initializeFileSystemManually = useCallback(async () => {
+    if (!token) {
+      console.log('No token, cannot initialize file system');
+      return;
+    }
+    
+    try {
+      console.log('🔄 Manually initializing file system...');
+      setLoading(true);
+      
+      const result = await apiCall('/filesystem/initialize', {
+        method: 'POST'
+      });
+      
+      if (result.success) {
+        console.log('✅ File system initialized successfully');
+        // Reload the file system after initialization
+        try {
+          const reloadResult = await apiCall('/filesystem');
+          if (reloadResult.data && reloadResult.data.fileSystem) {
+            setFileSystem(reloadResult.data.fileSystem);
+            console.log('✅ File system reloaded successfully');
+          }
+        } catch (reloadError) {
+          console.error('❌ Error reloading file system:', reloadError);
+          setError('File system initialized but failed to reload');
+        }
+      } else {
+        console.error('❌ Failed to initialize file system');
+        setError('Failed to initialize file system');
+      }
+    } catch (error) {
+      console.error('❌ Error initializing file system:', error);
+      setError(error.message);
+    } finally {
+      setLoading(false);
+    }
+  }, [token, apiCall]);
+
+  // **NEW: Test backend connectivity**
+  const testBackendConnection = useCallback(async () => {
+    try {
+      const apiBaseUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
+      const response = await fetch(`${apiBaseUrl}/health`);
+      const result = await response.json();
+      
+      console.log('🏥 Backend health check:', result);
+      return result.success;
+    } catch (error) {
+      console.error('❌ Backend health check failed:', error);
+      return false;
+    }
+  }, []);
+
+  // **ENHANCED: Load file system from backend**
+  const loadFromBackend = useCallback(async () => {
+    if (!token) {
+      console.log('❌ No token, skipping backend load');
+      return;
+    }
+    
+    console.log('🔐 Authentication check:', {
+      hasToken: !!token,
+      tokenLength: token.length,
+      isAuthenticated: isAuthenticated(),
+      user: user
+    });
+    
+    // **NEW: Test backend connectivity first**
+    const backendHealthy = await testBackendConnection();
+    if (!backendHealthy) {
+      console.error('❌ Backend is not reachable, using default file system');
+      setError('Backend server is not reachable');
+      initializeFileSystem();
+      return;
+    }
+    
+    try {
+      setLoading(true);
+      setError(null);
+      
+      console.log('🔄 Loading file system from backend...');
+      const result = await apiCall('/filesystem');
+      
+      console.log('📊 Backend response:', result);
+      
+      if (result.data && result.data.fileSystem) {
+        const fileSystemData = result.data.fileSystem;
+        const totalItems = result.data.totalItems || 0;
+        
+        console.log(`✅ File system loaded from backend: ${totalItems} items`);
+        console.log('📁 File system structure:', Object.keys(fileSystemData));
+        
+        if (totalItems === 0 || Object.keys(fileSystemData).length === 0) {
+          console.log('📁 Empty file system received, attempting to initialize...');
+          // Try to initialize the file system manually
+          try {
+            const initResult = await apiCall('/filesystem/initialize', {
+              method: 'POST'
+            });
+            
+            if (initResult.success) {
+              console.log('✅ File system initialized successfully');
+              // Reload the file system after initialization
+              const reloadResult = await apiCall('/filesystem');
+              if (reloadResult.data && reloadResult.data.fileSystem) {
+                setFileSystem(reloadResult.data.fileSystem);
+              } else {
+                setFileSystem(fileSystemData);
+              }
+            } else {
+              console.log('📁 Using empty file system');
+              setFileSystem(fileSystemData);
+            }
+          } catch (initError) {
+            console.error('❌ Error initializing file system:', initError);
+            setFileSystem(fileSystemData);
+          }
+        } else {
+          setFileSystem(fileSystemData);
+        }
+      } else {
+        console.log('📁 No backend file system found, using default');
+        initializeFileSystem();
+      }
+      
+    } catch (error) {
+      console.error('❌ Error loading from backend:', error);
+      setError(error.message);
+      // Fallback to default file system
+      initializeFileSystem();
+    } finally {
+      setLoading(false);
+    }
+  }, [token, apiCall, initializeFileSystem, isAuthenticated, user, testBackendConnection]);
+
+  // **NEW: Refresh file system from backend (called by fileService)**
+  const refreshFileSystem = useCallback(async () => {
+    console.log('🔄 Refreshing file system...');
+    await loadFromBackend();
+  }, [loadFromBackend]);
+
+  // **NEW: Update file content in local state (called by fileService)**
+  const updateFileContent = useCallback((filePath, content) => {
+    console.log('📝 Updating file content in frontend:', filePath);
+    setFileSystem(prev => {
+      const updated = { ...prev };
+      if (updated[filePath]) {
+        updated[filePath] = {
+          ...updated[filePath],
+          content: content,
+          size: content.length,
+          modified: new Date().toISOString()
+        };
+      }
+      return updated;
+    });
+  }, []);
+
+  // **NEW: Add file to local state (called by fileService)**
+  const addFile = useCallback((fileData) => {
+    console.log('📄 Adding file to frontend:', fileData.path);
+    setFileSystem(prev => {
+      const updated = { ...prev };
+
+      // Add the file
+      updated[fileData.path] = {
+        name: fileData.name,
+        type: 'file',
+        path: fileData.path,
+        extension: fileData.name.split('.').pop()?.toLowerCase() || '',
+        content: fileData.content || '',
+        created: fileData.created || new Date().toISOString(),
+        modified: fileData.modified || new Date().toISOString(),
+        size: fileData.size || 0,
+        ...fileData
+      };
+
+      // Add to parent folder's children
+      const parentPath = fileData.path.split('/').slice(0, -1).join('/') || '/';
+      if (updated[parentPath] && updated[parentPath].type === 'folder') {
+        const children = updated[parentPath].children || [];
+        if (!children.includes(fileData.path)) {
+          updated[parentPath] = {
+            ...updated[parentPath],
+            children: [...children, fileData.path],
+            modified: new Date().toISOString()
+          };
+        }
+      }
+
+      return updated;
+    });
+  }, []);
+
   // Get current directory contents
   const getCurrentDirectoryContents = useCallback((path = currentPath) => {
+    console.log('🔍 Getting contents for path:', path);
+    console.log('📁 Current file system keys:', Object.keys(fileSystem));
+    
+    // Get the directory for the current path
     const directory = fileSystem[path];
-    if (!directory || directory.type !== 'folder') {
+    if (!directory) {
+      console.log('❌ Directory not found:', path);
+      return [];
+    }
+    
+    if (directory.type !== 'folder') {
+      console.log('❌ Path is not a folder:', path);
       return [];
     }
 
-    return (directory.children || []).map(childPath => fileSystem[childPath]).filter(Boolean);
+    // Get children of this directory
+    const children = (directory.children || []).map(childPath => fileSystem[childPath]).filter(Boolean);
+    console.log('📂 Children found for', path, ':', children.map(item => item.name));
+    return children;
   }, [fileSystem, currentPath]);
 
   // Get item information
@@ -120,10 +383,15 @@ export const FileSystemProvider = ({ children }) => {
     return fileSystem[path];
   }, [fileSystem]);
 
-  // Create a new folder
-  const createFolder = useCallback((name, parentPath = currentPath) => {
+  // **NEW: Check if a path exists**
+  const pathExists = useCallback((path) => {
+    return !!fileSystem[path];
+  }, [fileSystem]);
+
+  // **ENHANCED: Create a new folder with backend sync**
+  const createFolder = useCallback(async (name, parentPath = currentPath) => {
     const folderPath = `${parentPath}/${name}`.replace('//', '/');
-    
+
     // Check if folder already exists
     if (fileSystem[folderPath]) {
       throw new Error('Folder already exists');
@@ -139,10 +407,11 @@ export const FileSystemProvider = ({ children }) => {
       size: 0
     };
 
+    // **First update local state**
     setFileSystem(prev => {
       const updated = { ...prev };
       updated[folderPath] = newFolder;
-      
+
       // Add to parent's children
       if (updated[parentPath]) {
         updated[parentPath] = {
@@ -151,20 +420,34 @@ export const FileSystemProvider = ({ children }) => {
           modified: new Date().toISOString()
         };
       }
-      
+
       return updated;
     });
 
-    // TODO: Persist to backend
-    persistToBackend('createFolder', { path: folderPath, data: newFolder });
-    
-    return folderPath;
-  }, [fileSystem, currentPath]);
+    // **Then persist to backend**
+    if (isAuthenticated()) {
+      try {
+        await apiCall('/filesystem/folder', {
+          method: 'POST',
+          body: JSON.stringify({
+            name: name,
+            parentPath: parentPath
+          })
+        });
+        console.log('✅ Folder created in backend:', folderPath);
+      } catch (error) {
+        console.error('❌ Failed to create folder in backend:', error);
+        // Could rollback local changes here
+      }
+    }
 
-  // Create a new file
-  const createFile = useCallback((name, content = '', parentPath = currentPath) => {
+    return folderPath;
+  }, [fileSystem, currentPath, isAuthenticated, apiCall]);
+
+  // **ENHANCED: Create a new file with backend sync**
+  const createFile = useCallback(async (name, content = '', parentPath = currentPath) => {
     const filePath = `${parentPath}/${name}`.replace('//', '/');
-    
+
     // Check if file already exists
     if (fileSystem[filePath]) {
       throw new Error('File already exists');
@@ -182,10 +465,11 @@ export const FileSystemProvider = ({ children }) => {
       size: content.length
     };
 
+    // **First update local state**
     setFileSystem(prev => {
       const updated = { ...prev };
       updated[filePath] = newFile;
-      
+
       // Add to parent's children
       if (updated[parentPath]) {
         updated[parentPath] = {
@@ -194,25 +478,40 @@ export const FileSystemProvider = ({ children }) => {
           modified: new Date().toISOString()
         };
       }
-      
+
       return updated;
     });
 
-    // TODO: Persist to backend
-    persistToBackend('createFile', { path: filePath, data: newFile });
-    
-    return filePath;
-  }, [fileSystem, currentPath]);
+    // **Then persist to backend**
+    if (isAuthenticated()) {
+      try {
+        await apiCall('/filesystem/file', {
+          method: 'POST',
+          body: JSON.stringify({
+            name: name,
+            content: content,
+            parentPath: parentPath
+          })
+        });
+        console.log('✅ File created in backend:', filePath);
+      } catch (error) {
+        console.error('❌ Failed to create file in backend:', error);
+        // Could rollback local changes here
+      }
+    }
 
-  // Save file content (for existing files)
+    return filePath;
+  }, [fileSystem, currentPath, isAuthenticated, apiCall]);
+
+  // **ENHANCED: Save file content with backend sync**
   const saveFile = useCallback(async (fileName, content, dirPath = currentPath) => {
     const filePath = `${dirPath}/${fileName}`.replace('//', '/');
-    
+
     // Check if this is updating an existing file or creating a new one
     const existingFile = fileSystem[filePath];
-    
+
     if (existingFile) {
-      // Update existing file
+      // **Update existing file in local state**
       const updatedFile = {
         ...existingFile,
         content,
@@ -225,25 +524,40 @@ export const FileSystemProvider = ({ children }) => {
         [filePath]: updatedFile
       }));
 
-      // TODO: Persist to backend
-      await persistToBackend('updateFile', { path: filePath, data: updatedFile });
-      
+      // **Persist to backend**
+      if (isAuthenticated()) {
+        try {
+          await apiCall('/filesystem/file/save', {
+            method: 'POST',
+            body: JSON.stringify({
+              filePath: filePath,
+              content: content
+            })
+          });
+          console.log('✅ File updated in backend:', filePath);
+        } catch (error) {
+          console.error('❌ Failed to update file in backend:', error);
+        }
+      }
+
       return { path: filePath, updated: true };
     } else {
       // Create new file
-      return { path: createFile(fileName, content, dirPath), created: true };
+      const newPath = await createFile(fileName, content, dirPath);
+      return { path: newPath, created: true };
     }
-  }, [fileSystem, currentPath, createFile]);
+  }, [fileSystem, currentPath, createFile, isAuthenticated, apiCall]);
 
-  // Delete items
-  const deleteItems = useCallback((paths) => {
+  // **ENHANCED: Delete items with backend sync**
+  const deleteItems = useCallback(async (paths) => {
+    // **First update local state**
     setFileSystem(prev => {
       const updated = { ...prev };
-      
+
       paths.forEach(path => {
         const item = updated[path];
         if (!item) return;
-        
+
         // Remove from parent's children
         const parentPath = path.split('/').slice(0, -1).join('/') || '/';
         if (updated[parentPath]) {
@@ -253,25 +567,41 @@ export const FileSystemProvider = ({ children }) => {
             modified: new Date().toISOString()
           };
         }
-        
+
         // If it's a folder, recursively delete children
         if (item.type === 'folder' && item.children) {
-          deleteItems(item.children);
+          item.children.forEach(childPath => {
+            delete updated[childPath];
+          });
         }
-        
+
         // Delete the item itself
         delete updated[path];
       });
-      
+
       return updated;
     });
 
-    // TODO: Persist to backend
-    persistToBackend('deleteItems', { paths });
-  }, []);
+    // **Then persist to backend**
+    if (isAuthenticated()) {
+      try {
+        for (const path of paths) {
+          await apiCall('/filesystem/item/delete', {
+            method: 'POST',
+            body: JSON.stringify({
+              itemPath: path
+            })
+          });
+        }
+        console.log('✅ Items deleted from backend:', paths);
+      } catch (error) {
+        console.error('❌ Failed to delete items from backend:', error);
+      }
+    }
+  }, [isAuthenticated, apiCall]);
 
-  // Rename item
-  const renameItem = useCallback((oldPath, newName) => {
+  // **ENHANCED: Rename item with backend sync**
+  const renameItem = useCallback(async (oldPath, newName) => {
     const item = fileSystem[oldPath];
     if (!item) {
       throw new Error('Item not found');
@@ -285,9 +615,10 @@ export const FileSystemProvider = ({ children }) => {
       throw new Error('An item with this name already exists');
     }
 
+    // **First update local state**
     setFileSystem(prev => {
       const updated = { ...prev };
-      
+
       // Update the item
       updated[newPath] = {
         ...item,
@@ -295,27 +626,27 @@ export const FileSystemProvider = ({ children }) => {
         path: newPath,
         modified: new Date().toISOString()
       };
-      
+
       // Update extension for files
       if (item.type === 'file') {
         updated[newPath].extension = newName.split('.').pop()?.toLowerCase() || '';
       }
-      
+
       // Remove old entry
       delete updated[oldPath];
-      
+
       // Update parent's children
       const parentPath = oldPath.split('/').slice(0, -1).join('/') || '/';
       if (updated[parentPath]) {
         updated[parentPath] = {
           ...updated[parentPath],
-          children: updated[parentPath].children.map(child => 
+          children: updated[parentPath].children.map(child =>
             child === oldPath ? newPath : child
           ),
           modified: new Date().toISOString()
         };
       }
-      
+
       // If it's a folder, update all children paths
       if (item.type === 'folder' && item.children) {
         const updateChildrenPaths = (children, oldBasePath, newBasePath) => {
@@ -327,88 +658,45 @@ export const FileSystemProvider = ({ children }) => {
                 path: newChildPath
               };
               delete updated[childPath];
-              
+
               // Recursively update if it's a folder
               if (updated[newChildPath].type === 'folder' && updated[newChildPath].children) {
                 updateChildrenPaths(updated[newChildPath].children, childPath, newChildPath);
-                updated[newChildPath].children = updated[newChildPath].children.map(cp => 
+                updated[newChildPath].children = updated[newChildPath].children.map(cp =>
                   cp.replace(oldBasePath, newBasePath)
                 );
               }
             }
           });
         };
-        
+
         updateChildrenPaths(item.children, oldPath, newPath);
-        updated[newPath].children = item.children.map(child => 
+        updated[newPath].children = item.children.map(child =>
           child.replace(oldPath, newPath)
         );
       }
-      
+
       return updated;
     });
 
-    // TODO: Persist to backend
-    persistToBackend('renameItem', { oldPath, newPath, newName });
-    
+    // **Then persist to backend**
+    if (isAuthenticated()) {
+      try {
+        await apiCall('/filesystem/item/rename', {
+          method: 'POST',
+          body: JSON.stringify({
+            itemPath: oldPath,
+            newName: newName
+          })
+        });
+        console.log('✅ Item renamed in backend:', oldPath, '→', newPath);
+      } catch (error) {
+        console.error('❌ Failed to rename item in backend:', error);
+      }
+    }
+
     return newPath;
-  }, [fileSystem]);
-
-  // Persist changes to backend (placeholder)
-  const persistToBackend = useCallback(async (operation, data) => {
-    if (!token) return;
-    
-    try {
-      // This would make actual API calls to save to database
-      console.log(`Backend operation: ${operation}`, data);
-      
-      // Example API call structure:
-      // const response = await fetch('/api/filesystem', {
-      //   method: 'POST',
-      //   headers: {
-      //     'Authorization': `Bearer ${token}`,
-      //     'Content-Type': 'application/json'
-      //   },
-      //   body: JSON.stringify({ operation, data })
-      // });
-      
-      // if (!response.ok) {
-      //   throw new Error('Failed to persist to backend');
-      // }
-      
-    } catch (error) {
-      console.error('Backend persistence error:', error);
-      // Could implement retry logic or show user notification
-    }
-  }, [token]);
-
-  // Load file system from backend (placeholder)
-  const loadFromBackend = useCallback(async () => {
-    if (!token) return;
-    
-    try {
-      setLoading(true);
-      setError(null);
-      
-      // This would load from actual backend
-      // const response = await fetch('/api/filesystem', {
-      //   headers: {
-      //     'Authorization': `Bearer ${token}`
-      //   }
-      // });
-      
-      // if (response.ok) {
-      //   const data = await response.json();
-      //   setFileSystem(data.fileSystem || {});
-      // }
-      
-    } catch (error) {
-      console.error('Error loading from backend:', error);
-      setError(error.message);
-    } finally {
-      setLoading(false);
-    }
-  }, [token]);
+  }, [fileSystem, isAuthenticated, apiCall]);
 
   // Search files
   const searchFiles = useCallback((query, searchPath = '/') => {
@@ -416,17 +704,17 @@ export const FileSystemProvider = ({ children }) => {
     const search = (path) => {
       const item = fileSystem[path];
       if (!item) return;
-      
+
       if (item.name.toLowerCase().includes(query.toLowerCase()) ||
-          (item.content && item.content.toLowerCase().includes(query.toLowerCase()))) {
+        (item.content && item.content.toLowerCase().includes(query.toLowerCase()))) {
         results.push(item);
       }
-      
+
       if (item.type === 'folder' && item.children) {
         item.children.forEach(search);
       }
     };
-    
+
     search(searchPath);
     return results;
   }, [fileSystem]);
@@ -439,6 +727,7 @@ export const FileSystemProvider = ({ children }) => {
     error,
     getCurrentDirectoryContents,
     getItemInfo,
+    pathExists,
     createFolder,
     createFile,
     saveFile,
@@ -446,7 +735,11 @@ export const FileSystemProvider = ({ children }) => {
     renameItem,
     searchFiles,
     loadFromBackend,
-    initializeFileSystem
+    refreshFileSystem,    // **NEW: For fileService to call**
+    updateFileContent,    // **NEW: For fileService to call**
+    addFile,             // **NEW: For fileService to call**
+    initializeFileSystem,
+    initializeFileSystemManually  // **NEW: For manual initialization**
   };
 
   return (

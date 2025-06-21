@@ -15,12 +15,12 @@ const FileExplorer = () => {
     getCurrentDirectoryContents,
     createFolder,
     createFile,
-    saveFile,
     deleteItems,
     renameItem,
     getItemInfo,
     searchFiles,
-    refreshFileSystem // Add this if you don't have it
+    refreshFileSystem, // Add this if you don't have it
+    initializeFileSystemManually
   } = useFileSystem();
 
   const [selectedItems, setSelectedItems] = useState([]);
@@ -46,7 +46,7 @@ const FileExplorer = () => {
           
         case 'SAVE_FILE_SUCCESS':
           console.log('File saved successfully:', event.filePath);
-          setOperationStatus(`✅ File saved: ${event.filePath.split('/').pop()}`);
+          setOperationStatus(`✅ File saved: ${typeof event.filePath === 'string' ? event.filePath.split('/').pop() : 'Unknown file'}`);
           setTimeout(() => setOperationStatus(''), 3000);
           
           // **NEW: Refresh file system context after backend save**
@@ -63,7 +63,7 @@ const FileExplorer = () => {
           
         case 'FILE_CREATED':
           console.log('New file created:', event.filePath);
-          setOperationStatus(`✅ File created: ${event.filePath.split('/').pop()}`);
+          setOperationStatus(`✅ File created: ${typeof event.filePath === 'string' ? event.filePath.split('/').pop() : 'Unknown file'}`);
           setTimeout(() => setOperationStatus(''), 3000);
           
           // **NEW: Refresh file system after backend file creation**
@@ -80,7 +80,7 @@ const FileExplorer = () => {
 
         // **NEW: Handle additional backend events**
         case 'FILE_DELETED':
-          setOperationStatus(`✅ File deleted: ${event.filePath.split('/').pop()}`);
+          setOperationStatus(`✅ File deleted: ${typeof event.filePath === 'string' ? event.filePath.split('/').pop() : 'Unknown file'}`);
           setTimeout(() => setOperationStatus(''), 3000);
           if (typeof refreshFileSystem === 'function') {
             refreshFileSystem();
@@ -88,7 +88,7 @@ const FileExplorer = () => {
           break;
 
         case 'FILE_RENAMED':
-          setOperationStatus(`✅ File renamed to: ${event.newPath.split('/').pop()}`);
+          setOperationStatus(`✅ File renamed to: ${typeof event.newPath === 'string' ? event.newPath.split('/').pop() : 'Unknown file'}`);
           setTimeout(() => setOperationStatus(''), 3000);
           if (typeof refreshFileSystem === 'function') {
             refreshFileSystem();
@@ -253,7 +253,7 @@ const FileExplorer = () => {
       if (fileService.isFileEditable(newPath)) {
         const openFile = window.confirm(`File created successfully! Would you like to open "${name}" in the text editor?`);
         if (openFile) {
-          fileService.openFile(newPath, content, name.split('.').pop()?.toLowerCase() || 'text');
+          fileService.openFile(newPath, content);
         }
       }
       
@@ -373,7 +373,7 @@ const FileExplorer = () => {
             fileContent = fileInfo?.content || '';
           }
           
-          fileService.openFile(item.path, fileContent, item.extension || 'text');
+          fileService.openFile(item.path, fileContent);
           console.log(`📝 Opening editable file: ${item.path}`);
         } else {
           // For non-editable files, could open with different applications
@@ -396,6 +396,11 @@ const FileExplorer = () => {
     try {
       setIsLoading(true);
       
+      // **NEW: Validate filePath is a string**
+      if (typeof filePath !== 'string') {
+        throw new Error('Invalid file path provided');
+      }
+      
       if (fileService.isFileEditable(filePath)) {
         // **NEW: Load file content from backend**
         let fileContent = '';
@@ -408,8 +413,7 @@ const FileExplorer = () => {
           fileContent = fileInfo?.content || '';
         }
         
-        const extension = filePath.split('.').pop()?.toLowerCase() || 'text';
-        fileService.openFile(filePath, fileContent, extension);
+        fileService.openFile(filePath, fileContent);
       } else {
         alert('This file type cannot be edited in the text editor.');
       }
@@ -424,6 +428,14 @@ const FileExplorer = () => {
   }, [getItemInfo]);
 
   const currentContents = getCurrentDirectoryContentsSorted();
+
+  console.log('📂 FileExplorer - Current contents:', {
+    currentPath,
+    totalItems: currentContents.length,
+    items: currentContents.map(item => ({ name: item.name, type: item.type, path: item.path })),
+    fileSystemKeys: Object.keys(fileSystem),
+    fileSystemSize: Object.keys(fileSystem).length
+  });
 
   return (
     <div className="file-explorer">
@@ -465,6 +477,27 @@ const FileExplorer = () => {
           {operationStatus && (
             <div className="operation-status">
               <span className="status-message">{operationStatus}</span>
+            </div>
+          )}
+          
+          {/* **NEW: Empty file system message with initialization button** */}
+          {Object.keys(fileSystem).length === 0 && !isLoading && (
+            <div className="empty-file-system">
+              <div className="empty-message">
+                <h3>📁 No files found</h3>
+                <p>Your file system appears to be empty. This might be because:</p>
+                <ul>
+                  <li>You're a new user and the default files haven't been created yet</li>
+                  <li>There was an issue loading your files from the server</li>
+                </ul>
+                <button 
+                  className="initialize-button"
+                  onClick={initializeFileSystemManually}
+                  disabled={isLoading}
+                >
+                  {isLoading ? '🔄 Initializing...' : '📁 Initialize File System'}
+                </button>
+              </div>
             </div>
           )}
           

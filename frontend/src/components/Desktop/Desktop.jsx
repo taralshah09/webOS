@@ -9,7 +9,6 @@ import Browser from '../Applications/Browser';
 import Terminal from '../Applications/Terminal';
 import fileService from '../../services/fileService';
 import { getDesktop, updateIconPosition, updateDesktopIcons } from '../../services/desktopService';
-import { useAuth } from '../../contexts/AuthContext';
 import '../../styles/theme.css';
 import WallpaperModal from './WallpaperModal';
 import { FileSystemProvider } from '../../contexts/FileSystemContext';
@@ -149,9 +148,12 @@ const Desktop = ({ createWindow, windows = [], onWindowFocus, onWindowMinimize }
   const handleFileOpen = (fileEvent) => {
     const { filePath, fileContent, fileType } = fileEvent;
 
+    // **NEW: Validate filePath is a string**
+    const fileName = typeof filePath === 'string' ? filePath.split('/').pop() : 'Unknown File';
+
     // Create a new Notepad window with the file content
     createWindow({
-      title: `${filePath.split('/').pop()} - Notepad`,
+      title: `${fileName} - Notepad`,
       content: <Notepad initialContent={fileContent} initialFilePath={filePath} initialLanguage={fileType} />,
       initialPosition: { x: 100 + Math.random() * 100, y: 100 + Math.random() * 100 },
       initialSize: { width: 800, height: 600 },

@@ -98,7 +98,7 @@ Navigation:
               const size = item.type === 'file' ? ` (${item.size} bytes)` : '';
               return `${icon} ${name}${size}`;
             }).join('\n');
-          } catch (error) {
+          } catch {
             return `ls: cannot access '${targetPath}': No such file or directory`;
           }
         }
@@ -138,6 +138,7 @@ Navigation:
             return `cd: no such directory: ${target}`;
           }
         }
+        
 
         case 'pwd': {
           return cwd;
@@ -183,7 +184,7 @@ Navigation:
           }
           
           try {
-            deleteItems(absolutePath);
+            deleteItems([absolutePath]);
             return `Removed: ${target}`;
           } catch (error) {
             return `rm: cannot remove '${target}': ${error.message}`;
