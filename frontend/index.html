@@ -2,12 +2,97 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Vite + React</title>
+    
+    <!-- webOS App Icon -->
+    <link rel="icon" type="image/png" href="https://cdn-icons-png.flaticon.com/512/59/59505.png" />
+    <link rel="apple-touch-icon" href="https://cdn-icons-png.flaticon.com/512/59/59505.png" />
+    <link rel="shortcut icon" href="https://cdn-icons-png.flaticon.com/512/59/59505.png" />
+    
+    <!-- Viewport and webOS optimizations -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
+    
+    <!-- webOS App Metadata -->
+    <meta name="application-name" content="Desktop Manager" />
+    <meta name="description" content="A modern desktop environment for webOS with wallpaper customization and desktop management features" />
+    <meta name="author" content="Desktop Manager Team" />
+    <meta name="keywords" content="webOS, desktop, wallpaper, manager, customization" />
+    
+    <!-- webOS Specific Meta Tags -->
+    <meta name="webos-app-id" content="com.desktop.manager" />
+    <meta name="webos-app-version" content="1.0.0" />
+    <meta name="webos-app-type" content="web" />
+    <meta name="webos-vendor" content="Desktop Manager" />
+    
+    <!-- App Display Settings -->
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="Desktop Manager" />
+    
+    <!-- webOS TV Specific -->
+    <meta name="webos-tv-app-id" content="com.desktop.manager" />
+    <meta name="webos-tv-resolution" content="1920x1080" />
+    <meta name="webos-tv-display-mode" content="fullscreen" />
+    
+    <!-- Theme and Color Scheme -->
+    <meta name="theme-color" content="#1a1a1a" />
+    <meta name="msapplication-navbutton-color" content="#1a1a1a" />
+    <meta name="msapplication-TileColor" content="#1a1a1a" />
+    <meta name="msapplication-TileImage" content="https://cdn-icons-png.flaticon.com/512/59/59505.png" />
+    
+    <!-- Manifest for PWA support -->
+    <link rel="manifest" href="/manifest.json" />
+    
+    <!-- Performance and Caching -->
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
+    <meta http-equiv="Pragma" content="no-cache" />
+    <meta http-equiv="Expires" content="0" />
+    
+    <!-- webOS Launch Parameters -->
+    <meta name="webos-launch-params" content='{"allowCrossDomain": true, "enableDebugger": false}' />
+    
+    <!-- Open Graph for webOS Store -->
+    <meta property="og:title" content="Desktop Manager" />
+    <meta property="og:description" content="Modern desktop environment for webOS with customizable wallpapers and desktop management" />
+    <meta property="og:image" content="https://cdn-icons-png.flaticon.com/512/59/59505.png" />
+    <meta property="og:type" content="website" />
+    
+    <!-- Title -->
+    <title>webOS</title>
+    
+    <!-- Preload critical resources -->
+    <link rel="preload" href="https://cdn-icons-png.flaticon.com/512/59/59505.png" as="image" />
   </head>
   <body>
     <div id="root"></div>
     <script type="module" src="/src/main.jsx"></script>
+    
+    <!-- webOS specific initialization script -->
+    <script>
+      // webOS app lifecycle management
+      if (window.webOSSystem) {
+        // Handle webOS app events
+        window.webOSSystem.addEventListener('webOSRelaunch', function(event) {
+          console.log('webOS app relaunched:', event);
+        });
+        
+        window.webOSSystem.addEventListener('webOSLocaleChange', function(event) {
+          console.log('webOS locale changed:', event);
+        });
+      }
+      
+      // Prevent right-click context menu on webOS
+      document.addEventListener('contextmenu', function(e) {
+        e.preventDefault();
+      });
+      
+      // Handle webOS back button
+      document.addEventListener('keydown', function(e) {
+        if (e.keyCode === 461) { // webOS back button
+          e.preventDefault();
+          // Handle back navigation in your app
+        }
+      });
+    </script>
   </body>
 </html>
