@@ -1,5 +1,4 @@
-// contexts/FileSystemContext.js
-import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
+import React, { createContext, useContext, useState, useCallback, useEffect } from 'react';
 import { useAuth } from './AuthContext';
 
 const FileSystemContext = createContext();
@@ -13,515 +12,555 @@ export const useFileSystem = () => {
 };
 
 export const FileSystemProvider = ({ children }) => {
-  const { user } = useAuth();
+  const { token, isAuthenticated, user } = useAuth();
   const [fileSystem, setFileSystem] = useState({});
   const [currentPath, setCurrentPath] = useState('/');
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
 
-  const createDefaultFileSystem = useCallback(() => {
-    const defaultFS = {
+  // Initialize file system with default structure
+  useEffect(() => {
+    if (isAuthenticated()) {
+      // Load from backend if authenticated, otherwise use default
+      loadFromBackend().catch(() => {
+        initializeFileSystem();
+      });
+    } else {
+      initializeFileSystem();
+    }
+  }, [isAuthenticated]);
+
+  const initializeFileSystem = useCallback(() => {
+    const defaultFileSystem = {
       '/': {
-        type: 'folder',
         name: 'Root',
-        children: ['/Documents', '/Pictures', '/Downloads', '/Desktop'],
+        type: 'folder',
+        path: '/',
+        children: ['/Documents', '/Downloads', '/Pictures', '/Desktop'],
         created: new Date().toISOString(),
         modified: new Date().toISOString(),
         size: 0
       },
       '/Documents': {
-        type: 'folder',
         name: 'Documents',
-        children: ['/Documents/Work', '/Documents/Personal'],
-        created: new Date().toISOString(),
-        modified: new Date().toISOString(),
-        size: 0
-      },
-      '/Documents/Work': {
         type: 'folder',
-        name: 'Work',
-        children: ['/Documents/Work/report.txt', '/Documents/Work/presentation.pptx', '/Documents/Work/sample.js', '/Documents/Work/config.json', '/Documents/Work/README.md'],
+        path: '/Documents',
+        children: ['/Documents/readme.txt', '/Documents/notes.md'],
         created: new Date().toISOString(),
         modified: new Date().toISOString(),
         size: 0
       },
-      '/Documents/Work/report.txt': {
+      '/Documents/readme.txt': {
+        name: 'readme.txt',
         type: 'file',
-        name: 'report.txt',
+        path: '/Documents/readme.txt',
         extension: 'txt',
-        size: 2048,
+        content: 'Welcome to WebOS File System!\n\nThis is a sample text file that demonstrates the file editing capabilities.\n\nYou can:\n- Double-click to open in the text editor\n- Edit the content\n- Save changes back to the file system\n- Create new files and folders\n\nEnjoy exploring your virtual file system!',
         created: new Date().toISOString(),
         modified: new Date().toISOString(),
-        content: `# Monthly Report - Q1 2024
-
-## Executive Summary
-This report covers the first quarter performance metrics and key achievements.
-
-## Key Metrics
-- Revenue: $2.5M (+15% YoY)
-- Customer Acquisition: 1,200 new users
-- Platform Uptime: 99.9%
-
-## Achievements
-1. Launched new mobile app
-2. Improved customer satisfaction scores
-3. Reduced operational costs by 12%
-
-## Next Steps
-- Expand to new markets
-- Enhance product features
-- Strengthen partnerships
-
----
-*Generated on ${new Date().toLocaleDateString()}*
-`
+        size: 384
       },
-      '/Documents/Work/presentation.pptx': {
+      '/Documents/notes.md': {
+        name: 'notes.md',
         type: 'file',
-        name: 'presentation.pptx',
-        extension: 'pptx',
-        size: 15360,
-        created: new Date().toISOString(),
-        modified: new Date().toISOString()
-      },
-      '/Documents/Personal': {
-        type: 'folder',
-        name: 'Personal',
-        children: ['/Documents/Personal/notes.txt'],
-        created: new Date().toISOString(),
-        modified: new Date().toISOString(),
-        size: 0
-      },
-      '/Documents/Personal/notes.txt': {
-        type: 'file',
-        name: 'notes.txt',
-        extension: 'txt',
-        size: 512,
-        created: new Date().toISOString(),
-        modified: new Date().toISOString(),
-        content: `Personal Notes
-
-TODO:
-- Buy groceries
-- Call dentist
-- Schedule car maintenance
-- Plan weekend trip
-
-Ideas:
-- Start learning React
-- Read that new book
-- Try that new restaurant
-
-Reminders:
-- Mom's birthday next week
-- Pay electricity bill
-- Return library books
-
----
-Last updated: ${new Date().toLocaleDateString()}
-`
-      },
-      '/Documents/Work/sample.js': {
-        type: 'file',
-        name: 'sample.js',
-        extension: 'js',
-        size: 1024,
-        created: new Date().toISOString(),
-        modified: new Date().toISOString(),
-        content: `// Sample JavaScript file for Web OS
-// This demonstrates syntax highlighting in Monaco Editor
-
-class WebOS {
-  constructor() {
-    this.name = 'Web OS';
-    this.version = '1.0.0';
-    this.features = [
-      'Desktop Environment',
-      'Window Management',
-      'File Explorer',
-      'Monaco Editor'
-    ];
-  }
-
-  initialize() {
-    console.log(\`Welcome to \${this.name} v\${this.version}!\`);
-    this.features.forEach(feature => {
-      console.log(\`✓ \${feature}\`);
-    });
-  }
-
-  openFile(filePath) {
-    return new Promise((resolve, reject) => {
-      try {
-        // File opening logic here
-        console.log(\`Opening file: \${filePath}\`);
-        resolve({ success: true, path: filePath });
-      } catch (error) {
-        reject(error);
-      }
-    });
-  }
-}
-
-// Create and initialize Web OS
-const webOS = new WebOS();
-webOS.initialize();
-
-// Export for use in other modules
-export default webOS;
-`
-      },
-      '/Documents/Work/config.json': {
-        type: 'file',
-        name: 'config.json',
-        extension: 'json',
-        size: 768,
-        created: new Date().toISOString(),
-        modified: new Date().toISOString(),
-        content: `{
-  "app": {
-    "name": "Web OS",
-    "version": "1.0.0",
-    "description": "A modern web-based operating system"
-  },
-  "features": {
-    "desktop": {
-      "enabled": true,
-      "background": "gradient",
-      "icons": true
-    },
-    "windows": {
-      "enabled": true,
-      "draggable": true,
-      "resizable": true,
-      "minimizable": true,
-      "maximizable": true
-    },
-    "fileExplorer": {
-      "enabled": true,
-      "treeView": true,
-      "gridView": true,
-      "listView": true
-    },
-    "notepad": {
-      "enabled": true,
-      "monacoEditor": true,
-      "syntaxHighlighting": true,
-      "themes": ["vs-dark", "vs-light", "hc-black"]
-    }
-  },
-  "settings": {
-    "theme": "dark",
-    "language": "en",
-    "timezone": "UTC"
-  }
-}`
-      },
-      '/Documents/Work/README.md': {
-        type: 'file',
-        name: 'README.md',
+        path: '/Documents/notes.md',
         extension: 'md',
-        size: 2048,
+        content: '# My Notes\n\nThis is a **Markdown** file that showcases syntax highlighting.\n\n## Features\n- Rich text editing\n- Syntax highlighting\n- File system integration\n- Auto-save functionality\n\n### Code Example\n```javascript\nconst greeting = "Hello, WebOS!";\nconsole.log(greeting);\n```\n\n*Start typing to see the editor in action!*',
         created: new Date().toISOString(),
         modified: new Date().toISOString(),
-        content: `# Web OS - Modern Web-Based Operating System
-
-## Overview
-Web OS is a cutting-edge web-based operating system that brings the power and flexibility of modern desktop environments to the web browser.
-
-## Features
-
-### 🖥️ Desktop Environment
-- **Full-screen desktop** with beautiful gradient backgrounds
-- **Draggable desktop icons** with selection and double-click functionality
-- **Right-click context menus** with system options
-- **Professional glassmorphism UI** design
-
-### 🪟 Window Management
-- **Draggable and resizable windows** with smooth animations
-- **Z-index management** for proper window layering
-- **Window controls** (minimize, maximize, close)
-- **Multiple window support** with independent positioning
-
-### 📁 File System Explorer
-- **Tree view navigation** with expand/collapse functionality
-- **Grid and list view modes** with sorting options
-- **File operations** (create, rename, delete, copy, cut, paste)
-- **Context menus** with file-specific actions
-- **Breadcrumb navigation** for easy path tracking
-
-### 📝 Professional Text Editor
-- **Monaco Editor integration** (same as VS Code)
-- **Syntax highlighting** for 20+ programming languages
-- **IntelliSense and auto-completion**
-- **Multiple themes** (Dark, Light, High Contrast)
-- **Line numbers and minimap**
-- **File opening integration** from File Explorer
-
-## Supported File Types
-- **Text files**: .txt, .md
-- **Code files**: .js, .jsx, .ts, .tsx, .html, .css, .json
-- **Programming languages**: .py, .java, .cpp, .c, .php, .rb, .go, .rs, .swift, .kt
-- **Data formats**: .xml, .yaml, .yml, .sql
-
-## Getting Started
-
-1. **Login** to your Web OS account
-2. **Navigate** the desktop using desktop icons
-3. **Open File Explorer** to browse your file system
-4. **Double-click files** to open them in the appropriate application
-5. **Use Notepad** for text editing with professional features
-
-## Technology Stack
-- **Frontend**: React 18, Vite
-- **Editor**: Monaco Editor (VS Code's editor)
-- **Styling**: CSS3 with glassmorphism effects
-- **State Management**: React Hooks and Context API
-
-## Development
-\`\`\`bash
-# Install dependencies
-npm install
-
-# Start development server
-npm run dev
-
-# Build for production
-npm run build
-\`\`\`
-
-## Contributing
-We welcome contributions! Please feel free to submit pull requests or open issues.
-
-## License
-MIT License - see LICENSE file for details.
-
----
-*Built with ❤️ for the modern web*
-`
-      },
-      '/Pictures': {
-        type: 'folder',
-        name: 'Pictures',
-        children: ['/Pictures/vacation.jpg', '/Pictures/family.png'],
-        created: new Date().toISOString(),
-        modified: new Date().toISOString(),
-        size: 0
-      },
-      '/Pictures/vacation.jpg': {
-        type: 'file',
-        name: 'vacation.jpg',
-        extension: 'jpg',
-        size: 2048576,
-        created: new Date().toISOString(),
-        modified: new Date().toISOString()
-      },
-      '/Pictures/family.png': {
-        type: 'file',
-        name: 'family.png',
-        extension: 'png',
-        size: 1048576,
-        created: new Date().toISOString(),
-        modified: new Date().toISOString()
+        size: 298
       },
       '/Downloads': {
-        type: 'folder',
         name: 'Downloads',
-        children: ['/Downloads/setup.exe', '/Downloads/document.pdf'],
+        type: 'folder',
+        path: '/Downloads',
+        children: [],
         created: new Date().toISOString(),
         modified: new Date().toISOString(),
         size: 0
       },
-      '/Downloads/setup.exe': {
-        type: 'file',
-        name: 'setup.exe',
-        extension: 'exe',
-        size: 52428800,
+      '/Pictures': {
+        name: 'Pictures',
+        type: 'folder',
+        path: '/Pictures',
+        children: [],
         created: new Date().toISOString(),
-        modified: new Date().toISOString()
-      },
-      '/Downloads/document.pdf': {
-        type: 'file',
-        name: 'document.pdf',
-        extension: 'pdf',
-        size: 2097152,
-        created: new Date().toISOString(),
-        modified: new Date().toISOString()
+        modified: new Date().toISOString(),
+        size: 0
       },
       '/Desktop': {
-        type: 'folder',
         name: 'Desktop',
-        children: ['/Desktop/readme.txt'],
+        type: 'folder',
+        path: '/Desktop',
+        children: ['/Desktop/sample.js'],
         created: new Date().toISOString(),
         modified: new Date().toISOString(),
         size: 0
       },
-      '/Desktop/readme.txt': {
+      '/Desktop/sample.js': {
+        name: 'sample.js',
         type: 'file',
-        name: 'readme.txt',
-        extension: 'txt',
-        size: 1024,
+        path: '/Desktop/sample.js',
+        extension: 'js',
+        content: '// Sample JavaScript file\n// This demonstrates syntax highlighting for code files\n\nclass WebOSDemo {\n  constructor() {\n    this.name = "WebOS File System Demo";\n    this.version = "1.0.0";\n  }\n\n  greet() {\n    console.log(`Welcome to ${this.name} v${this.version}!`);\n    return "File editing is now integrated!";\n  }\n\n  async saveFile(path, content) {\n    try {\n      // This would save to the backend\n      await fetch("/api/files", {\n        method: "POST",\n        headers: { "Content-Type": "application/json" },\n        body: JSON.stringify({ path, content })\n      });\n      console.log("File saved successfully!");\n    } catch (error) {\n      console.error("Save failed:", error);\n    }\n  }\n}\n\nconst demo = new WebOSDemo();\ndemo.greet();',
         created: new Date().toISOString(),
         modified: new Date().toISOString(),
-        content: 'Welcome to Web OS!\n\nThis is your desktop folder.'
+        size: 748
       }
     };
-    return defaultFS;
+
+    setFileSystem(defaultFileSystem);
   }, []);
 
-  // Initialize file system from localStorage or create default structure
-  useEffect(() => {
-    const loadFileSystem = () => {
-      const stored = localStorage.getItem(`webos_filesystem_${user?.id}`);
-      if (stored) {
+  // **NEW: Backend API helper**
+  const apiCall = useCallback(async (url, options = {}) => {
+    const apiBaseUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
+    const fullUrl = `${apiBaseUrl}${url}`;
+    
+    console.log('🌐 Making API call:', {
+      url: fullUrl,
+      method: options.method || 'GET',
+      hasToken: !!token,
+      tokenLength: token ? token.length : 0
+    });
+    
+    const response = await fetch(fullUrl, {
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`,
+        ...options.headers,
+      },
+      ...options,
+    });
+
+    console.log('📡 API Response:', {
+      status: response.status,
+      statusText: response.statusText,
+      ok: response.ok,
+      url: fullUrl
+    });
+
+    const result = await response.json();
+    
+    if (!response.ok) {
+      console.error('❌ API Error:', {
+        status: response.status,
+        message: result.message,
+        error: result.error
+      });
+      throw new Error(result.message || 'API request failed');
+    }
+    
+    console.log('✅ API Success:', {
+      url: fullUrl,
+      dataKeys: result.data ? Object.keys(result.data) : 'no data'
+    });
+    
+    return result;
+  }, [token]);
+
+  // **NEW: Manually initialize file system**
+  const initializeFileSystemManually = useCallback(async () => {
+    if (!token) {
+      console.log('No token, cannot initialize file system');
+      return;
+    }
+    
+    try {
+      console.log('🔄 Manually initializing file system...');
+      setLoading(true);
+      
+      const result = await apiCall('/filesystem/initialize', {
+        method: 'POST'
+      });
+      
+      if (result.success) {
+        console.log('✅ File system initialized successfully');
+        // Reload the file system after initialization
         try {
-          setFileSystem(JSON.parse(stored));
-        } catch (error) {
-          console.error('Error loading file system:', error);
-          setFileSystem(createDefaultFileSystem());
+          const reloadResult = await apiCall('/filesystem');
+          if (reloadResult.data && reloadResult.data.fileSystem) {
+            setFileSystem(reloadResult.data.fileSystem);
+            console.log('✅ File system reloaded successfully');
+          }
+        } catch (reloadError) {
+          console.error('❌ Error reloading file system:', reloadError);
+          setError('File system initialized but failed to reload');
         }
       } else {
-        setFileSystem(createDefaultFileSystem());
+        console.error('❌ Failed to initialize file system');
+        setError('Failed to initialize file system');
       }
-    };
-
-    if (user?.id) {
-      loadFileSystem();
+    } catch (error) {
+      console.error('❌ Error initializing file system:', error);
+      setError(error.message);
+    } finally {
+      setLoading(false);
     }
-  }, [user?.id, createDefaultFileSystem]);
+  }, [token, apiCall]);
 
-  // Save file system to localStorage whenever it changes
-  useEffect(() => {
-    if (Object.keys(fileSystem).length > 0 && user?.id) {
-      localStorage.setItem(`webos_filesystem_${user.id}`, JSON.stringify(fileSystem));
+  // **NEW: Test backend connectivity**
+  const testBackendConnection = useCallback(async () => {
+    try {
+      const apiBaseUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
+      const response = await fetch(`${apiBaseUrl}/health`);
+      const result = await response.json();
+      
+      console.log('🏥 Backend health check:', result);
+      return result.success;
+    } catch (error) {
+      console.error('❌ Backend health check failed:', error);
+      return false;
     }
-  }, [fileSystem, user?.id]);
+  }, []);
 
-  // Utility function to normalize path
-  const normalizePath = useCallback((path) => {
-    if (path === '/' || path === '') return '/';
-    return path.startsWith('/') ? path : `/${path}`;
+  // **ENHANCED: Load file system from backend**
+  const loadFromBackend = useCallback(async () => {
+    if (!token) {
+      console.log('❌ No token, skipping backend load');
+      return;
+    }
+    
+    console.log('🔐 Authentication check:', {
+      hasToken: !!token,
+      tokenLength: token.length,
+      isAuthenticated: isAuthenticated(),
+      user: user
+    });
+    
+    // **NEW: Test backend connectivity first**
+    const backendHealthy = await testBackendConnection();
+    if (!backendHealthy) {
+      console.error('❌ Backend is not reachable, using default file system');
+      setError('Backend server is not reachable');
+      initializeFileSystem();
+      return;
+    }
+    
+    try {
+      setLoading(true);
+      setError(null);
+      
+      console.log('🔄 Loading file system from backend...');
+      const result = await apiCall('/filesystem');
+      
+      console.log('📊 Backend response:', result);
+      
+      if (result.data && result.data.fileSystem) {
+        const fileSystemData = result.data.fileSystem;
+        const totalItems = result.data.totalItems || 0;
+        
+        console.log(`✅ File system loaded from backend: ${totalItems} items`);
+        console.log('📁 File system structure:', Object.keys(fileSystemData));
+        
+        if (totalItems === 0 || Object.keys(fileSystemData).length === 0) {
+          console.log('📁 Empty file system received, attempting to initialize...');
+          // Try to initialize the file system manually
+          try {
+            const initResult = await apiCall('/filesystem/initialize', {
+              method: 'POST'
+            });
+            
+            if (initResult.success) {
+              console.log('✅ File system initialized successfully');
+              // Reload the file system after initialization
+              const reloadResult = await apiCall('/filesystem');
+              if (reloadResult.data && reloadResult.data.fileSystem) {
+                setFileSystem(reloadResult.data.fileSystem);
+              } else {
+                setFileSystem(fileSystemData);
+              }
+            } else {
+              console.log('📁 Using empty file system');
+              setFileSystem(fileSystemData);
+            }
+          } catch (initError) {
+            console.error('❌ Error initializing file system:', initError);
+            setFileSystem(fileSystemData);
+          }
+        } else {
+          setFileSystem(fileSystemData);
+        }
+      } else {
+        console.log('📁 No backend file system found, using default');
+        initializeFileSystem();
+      }
+      
+    } catch (error) {
+      console.error('❌ Error loading from backend:', error);
+      setError(error.message);
+      // Fallback to default file system
+      initializeFileSystem();
+    } finally {
+      setLoading(false);
+    }
+  }, [token, apiCall, initializeFileSystem, isAuthenticated, user, testBackendConnection]);
+
+  // **NEW: Refresh file system from backend (called by fileService)**
+  const refreshFileSystem = useCallback(async () => {
+    console.log('🔄 Refreshing file system...');
+    await loadFromBackend();
+  }, [loadFromBackend]);
+
+  // **NEW: Update file content in local state (called by fileService)**
+  const updateFileContent = useCallback((filePath, content) => {
+    console.log('📝 Updating file content in frontend:', filePath);
+    setFileSystem(prev => {
+      const updated = { ...prev };
+      if (updated[filePath]) {
+        updated[filePath] = {
+          ...updated[filePath],
+          content: content,
+          size: content.length,
+          modified: new Date().toISOString()
+        };
+      }
+      return updated;
+    });
+  }, []);
+
+  // **NEW: Add file to local state (called by fileService)**
+  const addFile = useCallback((fileData) => {
+    console.log('📄 Adding file to frontend:', fileData.path);
+    setFileSystem(prev => {
+      const updated = { ...prev };
+
+      // Add the file
+      updated[fileData.path] = {
+        name: fileData.name,
+        type: 'file',
+        path: fileData.path,
+        extension: fileData.name.split('.').pop()?.toLowerCase() || '',
+        content: fileData.content || '',
+        created: fileData.created || new Date().toISOString(),
+        modified: fileData.modified || new Date().toISOString(),
+        size: fileData.size || 0,
+        ...fileData
+      };
+
+      // Add to parent folder's children
+      const parentPath = fileData.path.split('/').slice(0, -1).join('/') || '/';
+      if (updated[parentPath] && updated[parentPath].type === 'folder') {
+        const children = updated[parentPath].children || [];
+        if (!children.includes(fileData.path)) {
+          updated[parentPath] = {
+            ...updated[parentPath],
+            children: [...children, fileData.path],
+            modified: new Date().toISOString()
+          };
+        }
+      }
+
+      return updated;
+    });
   }, []);
 
   // Get current directory contents
   const getCurrentDirectoryContents = useCallback((path = currentPath) => {
-    const normalizedPath = normalizePath(path);
-    const currentDir = fileSystem[normalizedPath];
+    console.log('🔍 Getting contents for path:', path);
+    console.log('📁 Current file system keys:', Object.keys(fileSystem));
     
-    if (!currentDir || currentDir.type !== 'folder') {
-      console.warn(`Directory not found: ${normalizedPath}`);
+    // Get the directory for the current path
+    const directory = fileSystem[path];
+    if (!directory) {
+      console.log('❌ Directory not found:', path);
+      return [];
+    }
+    
+    if (directory.type !== 'folder') {
+      console.log('❌ Path is not a folder:', path);
       return [];
     }
 
-    return currentDir.children
-      .map(childPath => ({
-        path: childPath,
-        ...fileSystem[childPath]
-      }))
-      .filter(item => item && item.name) // Filter out any invalid items
-      .sort((a, b) => {
-        // Sort folders first, then files
-        if (a.type !== b.type) {
-          return a.type === 'folder' ? -1 : 1;
-        }
-        return a.name.localeCompare(b.name);
-      });
-  }, [fileSystem, currentPath, normalizePath]);
+    // Get children of this directory
+    const children = (directory.children || []).map(childPath => fileSystem[childPath]).filter(Boolean);
+    console.log('📂 Children found for', path, ':', children.map(item => item.name));
+    return children;
+  }, [fileSystem, currentPath]);
 
-  // Create folder function
-  const createFolder = useCallback((name, targetPath = currentPath) => {
-    const normalizedPath = normalizePath(targetPath);
-    const newPath = normalizedPath === '/' ? `/${name}` : `${normalizedPath}/${name}`;
-    
-    if (fileSystem[newPath]) {
-      throw new Error('A folder with this name already exists');
+  // Get item information
+  const getItemInfo = useCallback((path) => {
+    return fileSystem[path];
+  }, [fileSystem]);
+
+  // **NEW: Check if a path exists**
+  const pathExists = useCallback((path) => {
+    return !!fileSystem[path];
+  }, [fileSystem]);
+
+  // **ENHANCED: Create a new folder with backend sync**
+  const createFolder = useCallback(async (name, parentPath = currentPath) => {
+    const folderPath = `${parentPath}/${name}`.replace('//', '/');
+
+    // Check if folder already exists
+    if (fileSystem[folderPath]) {
+      throw new Error('Folder already exists');
     }
 
     const newFolder = {
-      type: 'folder',
       name,
+      type: 'folder',
+      path: folderPath,
       children: [],
       created: new Date().toISOString(),
       modified: new Date().toISOString(),
       size: 0
     };
 
+    // **First update local state**
     setFileSystem(prev => {
       const updated = { ...prev };
-      updated[newPath] = newFolder;
-      
-      // Update parent folder
-      if (updated[normalizedPath]) {
-        updated[normalizedPath] = {
-          ...updated[normalizedPath],
-          children: [...updated[normalizedPath].children, newPath],
+      updated[folderPath] = newFolder;
+
+      // Add to parent's children
+      if (updated[parentPath]) {
+        updated[parentPath] = {
+          ...updated[parentPath],
+          children: [...(updated[parentPath].children || []), folderPath],
           modified: new Date().toISOString()
         };
       }
-      
+
       return updated;
     });
 
-    return newPath;
-  }, [fileSystem, currentPath, normalizePath]);
-
-  // Create file function
-  const createFile = useCallback((name, content = '', targetPath = currentPath) => {
-    const normalizedPath = normalizePath(targetPath);
-    const newPath = normalizedPath === '/' ? `/${name}` : `${normalizedPath}/${name}`;
-    
-    if (fileSystem[newPath]) {
-      throw new Error('A file with this name already exists');
+    // **Then persist to backend**
+    if (isAuthenticated()) {
+      try {
+        await apiCall('/filesystem/folder', {
+          method: 'POST',
+          body: JSON.stringify({
+            name: name,
+            parentPath: parentPath
+          })
+        });
+        console.log('✅ Folder created in backend:', folderPath);
+      } catch (error) {
+        console.error('❌ Failed to create folder in backend:', error);
+        // Could rollback local changes here
+      }
     }
 
-    const extension = name.includes('.') ? name.split('.').pop().toLowerCase() : '';
+    return folderPath;
+  }, [fileSystem, currentPath, isAuthenticated, apiCall]);
+
+  // **ENHANCED: Create a new file with backend sync**
+  const createFile = useCallback(async (name, content = '', parentPath = currentPath) => {
+    const filePath = `${parentPath}/${name}`.replace('//', '/');
+
+    // Check if file already exists
+    if (fileSystem[filePath]) {
+      throw new Error('File already exists');
+    }
+
+    const extension = name.split('.').pop()?.toLowerCase() || '';
     const newFile = {
-      type: 'file',
       name,
+      type: 'file',
+      path: filePath,
       extension,
-      size: content.length,
       content,
       created: new Date().toISOString(),
-      modified: new Date().toISOString()
+      modified: new Date().toISOString(),
+      size: content.length
     };
 
+    // **First update local state**
     setFileSystem(prev => {
       const updated = { ...prev };
-      updated[newPath] = newFile;
-      
-      // Update parent folder
-      if (updated[normalizedPath]) {
-        updated[normalizedPath] = {
-          ...updated[normalizedPath],
-          children: [...updated[normalizedPath].children, newPath],
+      updated[filePath] = newFile;
+
+      // Add to parent's children
+      if (updated[parentPath]) {
+        updated[parentPath] = {
+          ...updated[parentPath],
+          children: [...(updated[parentPath].children || []), filePath],
           modified: new Date().toISOString()
         };
       }
-      
+
       return updated;
     });
 
-    return newPath;
-  }, [fileSystem, currentPath, normalizePath]);
+    // **Then persist to backend**
+    if (isAuthenticated()) {
+      try {
+        await apiCall('/filesystem/file', {
+          method: 'POST',
+          body: JSON.stringify({
+            name: name,
+            content: content,
+            parentPath: parentPath
+          })
+        });
+        console.log('✅ File created in backend:', filePath);
+      } catch (error) {
+        console.error('❌ Failed to create file in backend:', error);
+        // Could rollback local changes here
+      }
+    }
 
-  // Delete items function
-  const deleteItems = useCallback((paths) => {
-    const pathsToDelete = Array.isArray(paths) ? paths : [paths];
-    
+    return filePath;
+  }, [fileSystem, currentPath, isAuthenticated, apiCall]);
+
+  // **ENHANCED: Save file content with backend sync**
+  const saveFile = useCallback(async (fileName, content, dirPath = currentPath) => {
+    const filePath = `${dirPath}/${fileName}`.replace('//', '/');
+
+    // Check if this is updating an existing file or creating a new one
+    const existingFile = fileSystem[filePath];
+
+    if (existingFile) {
+      // **Update existing file in local state**
+      const updatedFile = {
+        ...existingFile,
+        content,
+        modified: new Date().toISOString(),
+        size: content.length
+      };
+
+      setFileSystem(prev => ({
+        ...prev,
+        [filePath]: updatedFile
+      }));
+
+      // **Persist to backend**
+      if (isAuthenticated()) {
+        try {
+          await apiCall('/filesystem/file/save', {
+            method: 'POST',
+            body: JSON.stringify({
+              filePath: filePath,
+              content: content
+            })
+          });
+          console.log('✅ File updated in backend:', filePath);
+        } catch (error) {
+          console.error('❌ Failed to update file in backend:', error);
+        }
+      }
+
+      return { path: filePath, updated: true };
+    } else {
+      // Create new file
+      const newPath = await createFile(fileName, content, dirPath);
+      return { path: newPath, created: true };
+    }
+  }, [fileSystem, currentPath, createFile, isAuthenticated, apiCall]);
+
+  // **ENHANCED: Delete items with backend sync**
+  const deleteItems = useCallback(async (paths) => {
+    // **First update local state**
     setFileSystem(prev => {
       const updated = { ...prev };
-      
-      // Recursive function to delete folder and all its contents
-      const deleteRecursively = (path) => {
+
+      paths.forEach(path => {
         const item = updated[path];
         if (!item) return;
 
-        if (item.type === 'folder' && item.children) {
-          // Delete all children first
-          item.children.forEach(childPath => deleteRecursively(childPath));
-        }
-
-        // Remove from parent's children array
-        const parentPath = path === '/' ? null : path.split('/').slice(0, -1).join('/') || '/';
-        if (parentPath && updated[parentPath]) {
+        // Remove from parent's children
+        const parentPath = path.split('/').slice(0, -1).join('/') || '/';
+        if (updated[parentPath]) {
           updated[parentPath] = {
             ...updated[parentPath],
             children: updated[parentPath].children.filter(child => child !== path),
@@ -529,93 +568,182 @@ MIT License - see LICENSE file for details.
           };
         }
 
+        // If it's a folder, recursively delete children
+        if (item.type === 'folder' && item.children) {
+          item.children.forEach(childPath => {
+            delete updated[childPath];
+          });
+        }
+
         // Delete the item itself
         delete updated[path];
-      };
+      });
 
-      pathsToDelete.forEach(path => deleteRecursively(path));
-      
       return updated;
     });
-  }, []);
 
-  // Rename item function
-  const renameItem = useCallback((oldPath, newName) => {
-    const parentPath = oldPath === '/' ? null : oldPath.split('/').slice(0, -1).join('/') || '/';
-    const newPath = parentPath ? `${parentPath}/${newName}` : `/${newName}`;
-    
+    // **Then persist to backend**
+    if (isAuthenticated()) {
+      try {
+        for (const path of paths) {
+          await apiCall('/filesystem/item/delete', {
+            method: 'POST',
+            body: JSON.stringify({
+              itemPath: path
+            })
+          });
+        }
+        console.log('✅ Items deleted from backend:', paths);
+      } catch (error) {
+        console.error('❌ Failed to delete items from backend:', error);
+      }
+    }
+  }, [isAuthenticated, apiCall]);
+
+  // **ENHANCED: Rename item with backend sync**
+  const renameItem = useCallback(async (oldPath, newName) => {
+    const item = fileSystem[oldPath];
+    if (!item) {
+      throw new Error('Item not found');
+    }
+
+    const pathParts = oldPath.split('/');
+    pathParts[pathParts.length - 1] = newName;
+    const newPath = pathParts.join('/');
+
     if (fileSystem[newPath]) {
       throw new Error('An item with this name already exists');
     }
 
+    // **First update local state**
     setFileSystem(prev => {
       const updated = { ...prev };
-      const item = updated[oldPath];
-      
-      if (!item) {
-        throw new Error('Item not found');
-      }
 
       // Update the item
-      const updatedItem = {
+      updated[newPath] = {
         ...item,
         name: newName,
+        path: newPath,
         modified: new Date().toISOString()
       };
 
-      if (item.type === 'file' && newName.includes('.')) {
-        updatedItem.extension = newName.split('.').pop().toLowerCase();
+      // Update extension for files
+      if (item.type === 'file') {
+        updated[newPath].extension = newName.split('.').pop()?.toLowerCase() || '';
       }
-      
-      // Move to new path
-      updated[newPath] = updatedItem;
+
+      // Remove old entry
       delete updated[oldPath];
-      
-      // Update parent's children array
-      if (parentPath && updated[parentPath]) {
+
+      // Update parent's children
+      const parentPath = oldPath.split('/').slice(0, -1).join('/') || '/';
+      if (updated[parentPath]) {
         updated[parentPath] = {
           ...updated[parentPath],
-          children: updated[parentPath].children.map(child => 
+          children: updated[parentPath].children.map(child =>
             child === oldPath ? newPath : child
           ),
           modified: new Date().toISOString()
         };
       }
-      
+
+      // If it's a folder, update all children paths
+      if (item.type === 'folder' && item.children) {
+        const updateChildrenPaths = (children, oldBasePath, newBasePath) => {
+          children.forEach(childPath => {
+            const newChildPath = childPath.replace(oldBasePath, newBasePath);
+            if (updated[childPath]) {
+              updated[newChildPath] = {
+                ...updated[childPath],
+                path: newChildPath
+              };
+              delete updated[childPath];
+
+              // Recursively update if it's a folder
+              if (updated[newChildPath].type === 'folder' && updated[newChildPath].children) {
+                updateChildrenPaths(updated[newChildPath].children, childPath, newChildPath);
+                updated[newChildPath].children = updated[newChildPath].children.map(cp =>
+                  cp.replace(oldBasePath, newBasePath)
+                );
+              }
+            }
+          });
+        };
+
+        updateChildrenPaths(item.children, oldPath, newPath);
+        updated[newPath].children = item.children.map(child =>
+          child.replace(oldPath, newPath)
+        );
+      }
+
       return updated;
     });
 
+    // **Then persist to backend**
+    if (isAuthenticated()) {
+      try {
+        await apiCall('/filesystem/item/rename', {
+          method: 'POST',
+          body: JSON.stringify({
+            itemPath: oldPath,
+            newName: newName
+          })
+        });
+        console.log('✅ Item renamed in backend:', oldPath, '→', newPath);
+      } catch (error) {
+        console.error('❌ Failed to rename item in backend:', error);
+      }
+    }
+
     return newPath;
+  }, [fileSystem, isAuthenticated, apiCall]);
+
+  // Search files
+  const searchFiles = useCallback((query, searchPath = '/') => {
+    const results = [];
+    const search = (path) => {
+      const item = fileSystem[path];
+      if (!item) return;
+
+      if (item.name.toLowerCase().includes(query.toLowerCase()) ||
+        (item.content && item.content.toLowerCase().includes(query.toLowerCase()))) {
+        results.push(item);
+      }
+
+      if (item.type === 'folder' && item.children) {
+        item.children.forEach(search);
+      }
+    };
+
+    search(searchPath);
+    return results;
   }, [fileSystem]);
 
-  // Check if path exists
-  const pathExists = useCallback((path) => {
-    const normalizedPath = normalizePath(path);
-    return !!fileSystem[normalizedPath];
-  }, [fileSystem, normalizePath]);
-
-  // Get file/folder info
-  const getItemInfo = useCallback((path) => {
-    const normalizedPath = normalizePath(path);
-    return fileSystem[normalizedPath] || null;
-  }, [fileSystem, normalizePath]);
-
-  const value = {
+  const contextValue = {
     fileSystem,
     currentPath,
     setCurrentPath,
+    loading,
+    error,
     getCurrentDirectoryContents,
+    getItemInfo,
+    pathExists,
     createFolder,
     createFile,
+    saveFile,
     deleteItems,
     renameItem,
-    pathExists,
-    getItemInfo,
-    normalizePath
+    searchFiles,
+    loadFromBackend,
+    refreshFileSystem,    // **NEW: For fileService to call**
+    updateFileContent,    // **NEW: For fileService to call**
+    addFile,             // **NEW: For fileService to call**
+    initializeFileSystem,
+    initializeFileSystemManually  // **NEW: For manual initialization**
   };
 
   return (
-    <FileSystemContext.Provider value={value}>
+    <FileSystemContext.Provider value={contextValue}>
       {children}
     </FileSystemContext.Provider>
   );

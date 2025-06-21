@@ -224,3 +224,246 @@
   font-size: 12px;
   text-align: center;
 } 
+
+.toolbar-checkbox {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: #666;
+  cursor: pointer;
+  user-select: none;
+}
+
+.toolbar-checkbox input[type="checkbox"] {
+  cursor: pointer;
+}
+
+/* Enhanced status bar items */
+.status-item.auto-save {
+  color: #0078d4;
+  font-weight: 500;
+}
+
+.status-item.modified {
+  color: #f59e0b;
+  font-weight: 600;
+}
+
+.status-item.saving {
+  color: #3b82f6;
+  animation: pulse 1.5s ease-in-out infinite;
+}
+
+/* Save status styling */
+.save-status {
+  font-size: 12px;
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-weight: 500;
+}
+
+/* Pulse animation for saving indicator */
+@keyframes pulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.5;
+  }
+}
+
+/* Enhanced toolbar sections */
+.toolbar-section {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 8px;
+}
+
+.toolbar-section:not(:last-child)::after {
+  content: '';
+  width: 1px;
+  height: 20px;
+  background-color: #e5e5e5;
+  margin-left: 8px;
+}
+
+/* Dark theme adjustments */
+.notepad-app[data-theme="dark"] .toolbar-checkbox {
+  color: #ccc;
+}
+
+.notepad-app[data-theme="dark"] .toolbar-section:not(:last-child)::after {
+  background-color: #444;
+}
+
+/* Loading state */
+.toolbar-button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* Status indicators with icons */
+.status-item::before {
+  margin-right: 4px;
+}
+
+.status-item.modified::before {
+  content: '●';
+  color: #f59e0b;
+}
+
+.status-item.saving::before {
+  content: '⏳';
+}
+
+.status-item.auto-save::before {
+  content: '🔄';
+}
+
+/* Add these styles to your existing Notepad.css */
+
+/* Authentication status indicator */
+.auth-status {
+  font-size: 12px;
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-weight: 500;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.auth-status.authenticated {
+  background: #dcfce7;
+  color: #166534;
+  border: 1px solid #bbf7d0;
+}
+
+.auth-status.not-authenticated {
+  background: #fef2f2;
+  color: #dc2626;
+  border: 1px solid #fecaca;
+}
+
+/* Enhanced save status */
+.save-status {
+  font-size: 12px;
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-weight: 500;
+  max-width: 200px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Status bar auth warning */
+.status-item.auth-warning {
+  color: #dc2626;
+  font-weight: 500;
+  animation: pulse 2s ease-in-out infinite;
+}
+
+/* Disabled button styling */
+.toolbar-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  background: #f5f5f5;
+  color: #999;
+}
+
+.toolbar-button:disabled:hover {
+  background: #f5f5f5;
+  transform: none;
+}
+
+/* Disabled checkbox styling */
+.toolbar-checkbox input[type="checkbox"]:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.toolbar-checkbox:has(input:disabled) {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Authentication required tooltips */
+.toolbar-button[title*="Login required"] {
+  position: relative;
+}
+
+.toolbar-button[title*="Login required"]:hover::after {
+  content: attr(title);
+  position: absolute;
+  bottom: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  background: #1f2937;
+  color: white;
+  padding: 6px 8px;
+  border-radius: 4px;
+  font-size: 11px;
+  white-space: nowrap;
+  z-index: 1000;
+  margin-bottom: 4px;
+}
+
+.toolbar-button[title*="Login required"]:hover::before {
+  content: '';
+  position: absolute;
+  bottom: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  border-left: 4px solid transparent;
+  border-right: 4px solid transparent;
+  border-top: 4px solid #1f2937;
+  z-index: 1000;
+}
+
+/* Pulse animation for warnings */
+@keyframes pulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.6;
+  }
+}
+
+/* Dark theme adjustments */
+.notepad-app[data-theme="dark"] .auth-status.authenticated {
+  background: #065f46;
+  color: #10b981;
+  border-color: #047857;
+}
+
+.notepad-app[data-theme="dark"] .auth-status.not-authenticated {
+  background: #7f1d1d;
+  color: #ef4444;
+  border-color: #991b1b;
+}
+
+.notepad-app[data-theme="dark"] .toolbar-button:disabled {
+  background: #374151;
+  color: #6b7280;
+}
+
+/* Mobile responsive adjustments */
+@media (max-width: 768px) {
+  .auth-status {
+    font-size: 11px;
+    padding: 3px 6px;
+  }
+  
+  .save-status {
+    font-size: 11px;
+    max-width: 150px;
+  }
+  
+  .toolbar-checkbox {
+    font-size: 11px;
+  }
+}

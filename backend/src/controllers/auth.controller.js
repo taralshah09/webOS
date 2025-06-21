@@ -1,6 +1,7 @@
 import bcrypt from 'bcrypt';
 import jwt from 'jsonwebtoken';
 import { User } from '../models/user.models.js';
+import { createUserDefaultFileSystem } from '../services/fileSystem.services.js';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'your_jwt_secret';
 const JWT_EXPIRES_IN = '7d';
@@ -17,6 +18,16 @@ export const register = async (req, res) => {
     const token = jwt.sign({ id: user._id }, JWT_SECRET, { expiresIn: JWT_EXPIRES_IN });
     user.tokens.push({ token });
     await user.save();
+    
+    // **NEW: Create default file system for new user**
+    try {
+      await createUserDefaultFileSystem(user._id);
+      console.log(`✅ Default file system created for user: ${user.username}`);
+    } catch (fileSystemError) {
+      console.error('❌ Error creating default file system:', fileSystemError);
+      // Don't fail registration if file system creation fails
+    }
+    
     res.status(201).json({ token, user: { id: user._id, username: user.username, email: user.email },message: 'Registration successful' });
   } catch (err) {
     res.status(500).json({ message: 'Registration failed', error: err.message });
