@@ -186,7 +186,7 @@ PUT  /api/desktop/wallpaper # Update wallpaper
 
 ## 🔮 Upcoming Features & Roadmap
 
-### **Version 2.0 - Q2 2024**
+### **Version 2.0 **
 - [ ] **🖥️ Terminal Application** - Full bash-like command-line interface
 - [ ] **📦 Package Manager** - Install/uninstall third-party applications
 - [ ] **🎨 Theme System** - Customizable UI themes and color schemes
@@ -194,7 +194,7 @@ PUT  /api/desktop/wallpaper # Update wallpaper
 - [ ] **🔍 Advanced Search** - Full-text search with filters and indexing
 - [ ] **📱 Mobile Support** - Responsive design for tablets and phones
 
-### **Version 3.0 - Q4 2024**
+### **Version 3.0 **
 - [ ] **⚡ Real-time Collaboration** - Google Docs-style collaborative editing
 - [ ] **🔌 Plugin System** - Third-party app development framework
 - [ ] **☁️ Cloud Storage Integration** - Google Drive, Dropbox, OneDrive sync
@@ -202,7 +202,7 @@ PUT  /api/desktop/wallpaper # Update wallpaper
 - [ ] **🔒 Advanced Security** - End-to-end encryption, 2FA, audit logs
 - [ ] **📊 Analytics Dashboard** - Usage statistics and performance metrics
 
-### **Version 4.0 - 2025**
+### **Version 4.0 **
 - [ ] **🌐 WebAssembly Support** - Run native applications in browser
 - [ ] **🎮 Application Store** - Marketplace for WebOS applications
 - [ ] **🔄 Offline Support** - Progressive Web App with offline functionality
