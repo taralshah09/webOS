@@ -10,7 +10,7 @@
 
 ## Live Demo 
 - URL : https://webos-five-eosin.vercel.app/
-- Youtube : [https://webos-five-eosin.vercel.app/ (Coming up)](https://youtu.be/w_px6U_JwAI)
+- Youtube : https://youtu.be/w_px6U_JwAI
 
 ---
 
