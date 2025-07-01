@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
-import './LoginForm.css';
+import './ClassicLoginForm.css';
 
 const RegisterForm = ({ onRegister }) => {
   const [form, setForm] = useState({
@@ -43,94 +43,119 @@ const RegisterForm = ({ onRegister }) => {
   };
 
   return (
-    <div className="login-container">
-      <div className="login-form">
-        <div className="login-header">
-          <div className="login-logo">
-            <span className="logo-icon">🖥️</span>
-            <h1>Web OS</h1>
+    <div className="auth-container">
+      <div className="auth-background"></div>
+      <div className="auth-card">
+        <div className="auth-header">
+          <div className="auth-logo">
+            <div className="logo-emblem">
+              <span className="logo-symbol">⚡</span>
+            </div>
+            <h1 className="brand-title">Web OS</h1>
           </div>
-          <p className="login-subtitle">Create a new account</p>
+          <div className="auth-divider"></div>
+          <h2 className="auth-title">Create Account</h2>
+          <p className="auth-subtitle">Join us and start your journey</p>
         </div>
-        <form onSubmit={handleSubmit} className="login-form-content">
+
+        <form onSubmit={handleSubmit} className="auth-form">
           {error && (
-            <div className="login-error">
-              <span className="error-icon">⚠️</span>
-              {error}
+            <div className="alert alert-error">
+              <div className="alert-icon">⚠</div>
+              <div className="alert-content">{error}</div>
             </div>
           )}
+          
           {success && (
-            <div className="login-success">
-              <span className="success-icon">✅</span>
-              {success}
+            <div className="alert alert-success">
+              <div className="alert-icon">✓</div>
+              <div className="alert-content">{success}</div>
             </div>
           )}
-          <div className="form-group">
-            <label htmlFor="username" className="form-label">Username</label>
-            <input
-              type="text"
-              id="username"
-              name="username"
-              value={form.username}
-              onChange={handleInputChange}
-              className="form-input"
-              placeholder="Enter your username"
-              autoComplete="username"
-              disabled={isLoading}
-            />
+
+          <div className="form-field">
+            <label htmlFor="username" className="field-label">Username</label>
+            <div className="input-wrapper">
+              <input
+                type="text"
+                id="username"
+                name="username"
+                value={form.username}
+                onChange={handleInputChange}
+                className="form-input"
+                placeholder="Choose a username"
+                autoComplete="username"
+                disabled={isLoading}
+              />
+              <div className="input-underline"></div>
+            </div>
           </div>
-          <div className="form-group">
-            <label htmlFor="email" className="form-label">Email</label>
-            <input
-              type="email"
-              id="email"
-              name="email"
-              value={form.email}
-              onChange={handleInputChange}
-              className="form-input"
-              placeholder="Enter your email"
-              autoComplete="email"
-              disabled={isLoading}
-            />
+
+          <div className="form-field">
+            <label htmlFor="email" className="field-label">Email Address</label>
+            <div className="input-wrapper">
+              <input
+                type="email"
+                id="email"
+                name="email"
+                value={form.email}
+                onChange={handleInputChange}
+                className="form-input"
+                placeholder="Enter your email"
+                autoComplete="email"
+                disabled={isLoading}
+              />
+              <div className="input-underline"></div>
+            </div>
           </div>
-          <div className="form-group">
-            <label htmlFor="password" className="form-label">Password</label>
-            <input
-              type="password"
-              id="password"
-              name="password"
-              value={form.password}
-              onChange={handleInputChange}
-              className="form-input"
-              placeholder="Enter your password"
-              autoComplete="new-password"
-              disabled={isLoading}
-            />
+
+          <div className="form-field">
+            <label htmlFor="password" className="field-label">Password</label>
+            <div className="input-wrapper">
+              <input
+                type="password"
+                id="password"
+                name="password"
+                value={form.password}
+                onChange={handleInputChange}
+                className="form-input"
+                placeholder="Create a secure password"
+                autoComplete="new-password"
+                disabled={isLoading}
+              />
+              <div className="input-underline"></div>
+            </div>
           </div>
+
           <button
             type="submit"
-            className={`login-button ${isLoading ? 'loading' : ''}`}
+            className={`auth-button ${isLoading ? 'loading' : ''}`}
             disabled={isLoading}
           >
             {isLoading ? (
               <>
-                <span className="loading-spinner"></span>
-                Creating account...
+                <span className="button-spinner"></span>
+                Creating Account...
               </>
             ) : (
-              'Register'
+              <>
+                <span>Create Account</span>
+                <span className="button-arrow">→</span>
+              </>
             )}
           </button>
         </form>
-        <div className="protected-toggle-link">
-          <span>
+
+        <div className="auth-footer">
+          <div className="footer-divider"></div>
+          <p className="auth-switch">
             Already have an account?{' '}
-            <Link to="/login">Sign in</Link>
-          </span>
+            <Link to="/login" className="auth-link">Sign In</Link>
+          </p>
         </div>
       </div>
     </div>
   );
 };
 
-export default RegisterForm; 
+export default RegisterForm;
