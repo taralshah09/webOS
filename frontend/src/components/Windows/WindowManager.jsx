@@ -8,7 +8,7 @@ const WindowManager = ({ children }) => {
 
   // Create a new window
   const createWindow = useCallback((windowConfig) => {
-    console.log('WindowManager: Creating window with config:', windowConfig);
+    // console.log('WindowManager: Creating window with config:', windowConfig);
     
     const newWindow = {
       id: Date.now() + Math.random(),
@@ -19,13 +19,13 @@ const WindowManager = ({ children }) => {
       ...windowConfig
     };
 
-    console.log('WindowManager: New window object:', newWindow);
+    // console.log('WindowManager: New window object:', newWindow);
 
     setWindows(prev => {
       // Unfocus all other windows
       const updatedWindows = prev.map(w => ({ ...w, isFocused: false }));
       const newWindowsArray = [...updatedWindows, newWindow];
-      console.log('WindowManager: Updated windows array:', newWindowsArray);
+      // console.log('WindowManager: Updated windows array:', newWindowsArray);
       return newWindowsArray;
     });
 
@@ -81,7 +81,7 @@ const WindowManager = ({ children }) => {
   // Get minimized windows
   const minimizedWindows = windows.filter(w => w.isMinimized);
 
-  console.log('WindowManager: Rendering visible windows:', visibleWindows);
+  // console.log('WindowManager: Rendering visible windows:', visibleWindows);
 
   return (
     <div className="window-manager">

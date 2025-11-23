@@ -51,14 +51,14 @@ const Desktop = ({ createWindow, windows = [], onWindowFocus, onWindowMinimize }
             visible: icon.visible !== false
           })) || [];
 
-          console.log('✅ Loaded desktop icons from backend:', transformedIcons);
+          // console.log('✅ Loaded desktop icons from backend:', transformedIcons);
           setDesktopIcons(transformedIcons);
         } else {
           console.log('No backend data, using default icons');
           setDefaultIcons();
         }
       } catch (err) {
-        console.error('❌ Error fetching desktop from backend:', err);
+        // console.error('❌ Error fetching desktop from backend:', err);
         console.log('Using default desktop icons as fallback');
         setDefaultIcons();
       } finally {
@@ -203,12 +203,12 @@ const Desktop = ({ createWindow, windows = [], onWindowFocus, onWindowMinimize }
   };
 
   const handleIconDoubleClick = (icon) => {
-    console.log('handleIconDoubleClick called with icon:', icon);
-    console.log('Icon type:', icon.type);
+    // console.log('handleIconDoubleClick called with icon:', icon);
+    // console.log('Icon type:', icon.type);
 
     switch (icon.type) {
       case 'notepad':
-        console.log('Opening Notepad');
+        // console.log('Opening Notepad');
         createWindow({
           title: 'Notepad',
           content: <Notepad />,
@@ -219,7 +219,7 @@ const Desktop = ({ createWindow, windows = [], onWindowFocus, onWindowMinimize }
         break;
       case 'fileexplorer':
       case 'file-explorer':
-        console.log('Opening File Explorer window');
+        // console.log('Opening File Explorer window');
         createWindow({
           title: 'File Explorer',
           content: <FileExplorer />,
@@ -275,7 +275,7 @@ const Desktop = ({ createWindow, windows = [], onWindowFocus, onWindowMinimize }
         });
         break;
       default:
-        console.log(`Opening ${icon.name}`);
+        // console.log(`Opening ${icon.name}`);
         break;
     }
   };

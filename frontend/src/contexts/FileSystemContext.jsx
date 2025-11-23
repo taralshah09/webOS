@@ -117,12 +117,12 @@ export const FileSystemProvider = ({ children }) => {
     const apiBaseUrl = import.meta.env.VITE_API_URL || 'https://webos-opx9.onrender.com/api';
     const fullUrl = `${apiBaseUrl}${url}`;
 
-    console.log('🌐 Making API call:', {
-      url: fullUrl,
-      method: options.method || 'GET',
-      hasToken: !!token,
-      tokenLength: token ? token.length : 0
-    });
+    // console.log('🌐 Making API call:', {
+    //   url: fullUrl,
+    //   method: options.method || 'GET',
+    //   hasToken: !!token,
+    //   tokenLength: token ? token.length : 0
+    // });
 
     const response = await fetch(fullUrl, {
       headers: {
@@ -133,28 +133,28 @@ export const FileSystemProvider = ({ children }) => {
       ...options,
     });
 
-    console.log('📡 API Response:', {
-      status: response.status,
-      statusText: response.statusText,
-      ok: response.ok,
-      url: fullUrl
-    });
+    // console.log('📡 API Response:', {
+    //   status: response.status,
+    //   statusText: response.statusText,
+    //   ok: response.ok,
+    //   url: fullUrl
+    // });
 
     const result = await response.json();
 
     if (!response.ok) {
-      console.error('❌ API Error:', {
-        status: response.status,
-        message: result.message,
-        error: result.error
-      });
+      // console.error('❌ API Error:', {
+      //   status: response.status,
+      //   message: result.message,
+      //   error: result.error
+      // });
       throw new Error(result.message || 'API request failed');
     }
 
-    console.log('✅ API Success:', {
-      url: fullUrl,
-      dataKeys: result.data ? Object.keys(result.data) : 'no data'
-    });
+    // console.log('✅ API Success:', {
+    //   url: fullUrl,
+    //   dataKeys: result.data ? Object.keys(result.data) : 'no data'
+    // });
 
     return result;
   }, [token]);
@@ -167,7 +167,7 @@ export const FileSystemProvider = ({ children }) => {
     }
 
     try {
-      console.log('🔄 Manually initializing file system...');
+      // console.log('🔄 Manually initializing file system...');
       setLoading(true);
 
       const result = await apiCall('/filesystem/initialize', {
@@ -175,24 +175,24 @@ export const FileSystemProvider = ({ children }) => {
       });
 
       if (result.success) {
-        console.log('✅ File system initialized successfully');
+        // console.log('✅ File system initialized successfully');
         // Reload the file system after initialization
         try {
           const reloadResult = await apiCall('/filesystem');
           if (reloadResult.data && reloadResult.data.fileSystem) {
             setFileSystem(reloadResult.data.fileSystem);
-            console.log('✅ File system reloaded successfully');
+            // console.log('✅ File system reloaded successfully');
           }
         } catch (reloadError) {
-          console.error('❌ Error reloading file system:', reloadError);
+          // console.error('❌ Error reloading file system:', reloadError);
           setError('File system initialized but failed to reload');
         }
       } else {
-        console.error('❌ Failed to initialize file system');
+        // console.error('❌ Failed to initialize file system');
         setError('Failed to initialize file system');
       }
     } catch (error) {
-      console.error('❌ Error initializing file system:', error);
+      // console.error('❌ Error initializing file system:', error);
       setError(error.message);
     } finally {
       setLoading(false);
@@ -206,10 +206,10 @@ export const FileSystemProvider = ({ children }) => {
       const response = await fetch(`${apiBaseUrl}/health`);
       const result = await response.json();
 
-      console.log('🏥 Backend health check:', result);
+      // console.log('🏥 Backend health check:', result);
       return result.success;
     } catch (error) {
-      console.error('❌ Backend health check failed:', error);
+      // console.error('❌ Backend health check failed:', error);
       return false;
     }
   }, []);
@@ -217,21 +217,21 @@ export const FileSystemProvider = ({ children }) => {
   // **ENHANCED: Load file system from backend**
   const loadFromBackend = useCallback(async () => {
     if (!token) {
-      console.log('❌ No token, skipping backend load');
+      // console.log('❌ No token, skipping backend load');
       return;
     }
 
-    console.log('🔐 Authentication check:', {
-      hasToken: !!token,
-      tokenLength: token.length,
-      isAuthenticated: isAuthenticated(),
-      user: user
-    });
+    // console.log('🔐 Authentication check:', {
+    //   hasToken: !!token,
+    //   tokenLength: token.length,
+    //   isAuthenticated: isAuthenticated(),
+    //   user: user
+    // });
 
     // **NEW: Test backend connectivity first**
     const backendHealthy = await testBackendConnection();
     if (!backendHealthy) {
-      console.error('❌ Backend is not reachable, using default file system');
+      // console.error('❌ Backend is not reachable, using default file system');
       setError('Backend server is not reachable');
       initializeFileSystem();
       return;
@@ -241,20 +241,20 @@ export const FileSystemProvider = ({ children }) => {
       setLoading(true);
       setError(null);
 
-      console.log('🔄 Loading file system from backend...');
+      // console.log('🔄 Loading file system from backend...');
       const result = await apiCall('/filesystem');
 
-      console.log('📊 Backend response:', result);
+      // console.log('📊 Backend response:', result);
 
       if (result.data && result.data.fileSystem) {
         const fileSystemData = result.data.fileSystem;
         const totalItems = result.data.totalItems || 0;
 
-        console.log(`✅ File system loaded from backend: ${totalItems} items`);
-        console.log('📁 File system structure:', Object.keys(fileSystemData));
+        // console.log(`✅ File system loaded from backend: ${totalItems} items`);
+        // console.log('📁 File system structure:', Object.keys(fileSystemData));
 
         if (totalItems === 0 || Object.keys(fileSystemData).length === 0) {
-          console.log('📁 Empty file system received, attempting to initialize...');
+          // console.log('📁 Empty file system received, attempting to initialize...');
           // Try to initialize the file system manually
           try {
             const initResult = await apiCall('/filesystem/initialize', {
@@ -262,7 +262,7 @@ export const FileSystemProvider = ({ children }) => {
             });
 
             if (initResult.success) {
-              console.log('✅ File system initialized successfully');
+              // console.log('✅ File system initialized successfully');
               // Reload the file system after initialization
               const reloadResult = await apiCall('/filesystem');
               if (reloadResult.data && reloadResult.data.fileSystem) {
@@ -271,23 +271,23 @@ export const FileSystemProvider = ({ children }) => {
                 setFileSystem(fileSystemData);
               }
             } else {
-              console.log('📁 Using empty file system');
+              // console.log('📁 Using empty file system');
               setFileSystem(fileSystemData);
             }
           } catch (initError) {
-            console.error('❌ Error initializing file system:', initError);
+            // console.error('❌ Error initializing file system:', initError);
             setFileSystem(fileSystemData);
           }
         } else {
           setFileSystem(fileSystemData);
         }
       } else {
-        console.log('📁 No backend file system found, using default');
+        // console.log('📁 No backend file system found, using default');
         initializeFileSystem();
       }
 
     } catch (error) {
-      console.error('❌ Error loading from backend:', error);
+      // console.error('❌ Error loading from backend:', error);
       setError(error.message);
       // Fallback to default file system
       initializeFileSystem();
@@ -298,13 +298,13 @@ export const FileSystemProvider = ({ children }) => {
 
   // **NEW: Refresh file system from backend (called by fileService)**
   const refreshFileSystem = useCallback(async () => {
-    console.log('🔄 Refreshing file system...');
+    // console.log('🔄 Refreshing file system...');
     await loadFromBackend();
   }, [loadFromBackend]);
 
   // **NEW: Update file content in local state (called by fileService)**
   const updateFileContent = useCallback((filePath, content) => {
-    console.log('📝 Updating file content in frontend:', filePath);
+    // console.log('📝 Updating file content in frontend:', filePath);
     setFileSystem(prev => {
       const updated = { ...prev };
       if (updated[filePath]) {
@@ -321,7 +321,7 @@ export const FileSystemProvider = ({ children }) => {
 
   // **NEW: Add file to local state (called by fileService)**
   const addFile = useCallback((fileData) => {
-    console.log('📄 Adding file to frontend:', fileData.path);
+    // console.log('📄 Adding file to frontend:', fileData.path);
     setFileSystem(prev => {
       const updated = { ...prev };
 
@@ -357,24 +357,24 @@ export const FileSystemProvider = ({ children }) => {
 
   // Get current directory contents
   const getCurrentDirectoryContents = useCallback((path = currentPath) => {
-    console.log('🔍 Getting contents for path:', path);
-    console.log('📁 Current file system keys:', Object.keys(fileSystem));
+    // console.log('🔍 Getting contents for path:', path);
+    // console.log('📁 Current file system keys:', Object.keys(fileSystem));
 
     // Get the directory for the current path
     const directory = fileSystem[path];
     if (!directory) {
-      console.log('❌ Directory not found:', path);
+      // console.log('❌ Directory not found:', path);
       return [];
     }
 
     if (directory.type !== 'folder') {
-      console.log('❌ Path is not a folder:', path);
+      // console.log('❌ Path is not a folder:', path);
       return [];
     }
 
     // Get children of this directory
     const children = (directory.children || []).map(childPath => fileSystem[childPath]).filter(Boolean);
-    console.log('📂 Children found for', path, ':', children.map(item => item.name));
+    // console.log('📂 Children found for', path, ':', children.map(item => item.name));
     return children;
   }, [fileSystem, currentPath]);
 
@@ -434,9 +434,9 @@ export const FileSystemProvider = ({ children }) => {
             parentPath: parentPath
           })
         });
-        console.log('✅ Folder created in backend:', folderPath);
+        // console.log('✅ Folder created in backend:', folderPath);
       } catch (error) {
-        console.error('❌ Failed to create folder in backend:', error);
+        // console.error('❌ Failed to create folder in backend:', error);
         // Could rollback local changes here
       }
     }
@@ -493,9 +493,9 @@ export const FileSystemProvider = ({ children }) => {
             parentPath: parentPath
           })
         });
-        console.log('✅ File created in backend:', filePath);
+        // console.log('✅ File created in backend:', filePath);
       } catch (error) {
-        console.error('❌ Failed to create file in backend:', error);
+        // console.error('❌ Failed to create file in backend:', error);
         // Could rollback local changes here
       }
     }
@@ -534,9 +534,9 @@ export const FileSystemProvider = ({ children }) => {
               content: content
             })
           });
-          console.log('✅ File updated in backend:', filePath);
+          // console.log('✅ File updated in backend:', filePath);
         } catch (error) {
-          console.error('❌ Failed to update file in backend:', error);
+          // console.error('❌ Failed to update file in backend:', error);
         }
       }
 
@@ -593,9 +593,9 @@ export const FileSystemProvider = ({ children }) => {
             })
           });
         }
-        console.log('✅ Items deleted from backend:', paths);
+        // console.log('✅ Items deleted from backend:', paths);
       } catch (error) {
-        console.error('❌ Failed to delete items from backend:', error);
+        // console.error('❌ Failed to delete items from backend:', error);
       }
     }
   }, [isAuthenticated, apiCall]);
@@ -689,9 +689,9 @@ export const FileSystemProvider = ({ children }) => {
             newName: newName
           })
         });
-        console.log('✅ Item renamed in backend:', oldPath, '→', newPath);
+        // console.log('✅ Item renamed in backend:', oldPath, '→', newPath);
       } catch (error) {
-        console.error('❌ Failed to rename item in backend:', error);
+        // console.error('❌ Failed to rename item in backend:', error);
       }
     }
 

@@ -43,9 +43,9 @@ const DesktopIcon = ({ icon, onMove, onDoubleClick, onContextMenu }) => {
   };
 
   const handleDoubleClick = () => {
-    console.log('DesktopIcon: Double-click event triggered for icon:', icon);
+    // console.log('DesktopIcon: Double-click event triggered for icon:', icon);
     if (onDoubleClick) {
-      console.log('DesktopIcon: Calling onDoubleClick with icon:', icon);
+      // console.log('DesktopIcon: Calling onDoubleClick with icon:', icon);
       onDoubleClick(icon);
     }
   };

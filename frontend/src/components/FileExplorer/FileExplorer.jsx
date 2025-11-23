@@ -45,7 +45,7 @@ const FileExplorer = () => {
           break;
           
         case 'SAVE_FILE_SUCCESS':
-          console.log('File saved successfully:', event.filePath);
+          // console.log('File saved successfully:', event.filePath);
           setOperationStatus(`✅ File saved: ${typeof event.filePath === 'string' ? event.filePath.split('/').pop() : 'Unknown file'}`);
           setTimeout(() => setOperationStatus(''), 3000);
           
@@ -56,13 +56,13 @@ const FileExplorer = () => {
           break;
           
         case 'SAVE_FILE_ERROR':
-          console.error('File save error:', event.error);
+          // console.error('File save error:', event.error);
           setOperationStatus(`❌ Save failed: ${event.error}`);
           setTimeout(() => setOperationStatus(''), 5000);
           break;
           
         case 'FILE_CREATED':
-          console.log('New file created:', event.filePath);
+          // console.log('New file created:', event.filePath);
           setOperationStatus(`✅ File created: ${typeof event.filePath === 'string' ? event.filePath.split('/').pop() : 'Unknown file'}`);
           setTimeout(() => setOperationStatus(''), 3000);
           
@@ -73,14 +73,14 @@ const FileExplorer = () => {
           break;
           
         case 'FILE_CREATE_ERROR':
-          console.error('File creation error:', event.error);
+          // console.error('File creation error:', event.error);
           setOperationStatus(`❌ Create failed: ${event.error}`);
           setTimeout(() => setOperationStatus(''), 5000);
           break;
 
         // **NEW: Handle additional backend events**
         case 'FILE_DELETED':
-          setOperationStatus(`✅ File deleted: ${typeof event.filePath === 'string' ? event.filePath.split('/').pop() : 'Unknown file'}`);
+          // setOperationStatus(`✅ File deleted: ${typeof event.filePath === 'string' ? event.filePath.split('/').pop() : 'Unknown file'}`);
           setTimeout(() => setOperationStatus(''), 3000);
           if (typeof refreshFileSystem === 'function') {
             refreshFileSystem();
@@ -88,7 +88,7 @@ const FileExplorer = () => {
           break;
 
         case 'FILE_RENAMED':
-          setOperationStatus(`✅ File renamed to: ${typeof event.newPath === 'string' ? event.newPath.split('/').pop() : 'Unknown file'}`);
+          // setOperationStatus(`✅ File renamed to: ${typeof event.newPath === 'string' ? event.newPath.split('/').pop() : 'Unknown file'}`);
           setTimeout(() => setOperationStatus(''), 3000);
           if (typeof refreshFileSystem === 'function') {
             refreshFileSystem();
@@ -213,11 +213,11 @@ const FileExplorer = () => {
         
         // Then update local context
         const newPath = createFolder(name, currentPath);
-        console.log(`✅ Folder created: ${name} in ${currentPath}`);
+        // console.log(`✅ Folder created: ${name} in ${currentPath}`);
         return newPath;
         
       } catch (backendError) {
-        console.warn('Backend folder creation failed, trying local:', backendError);
+        // console.warn('Backend folder creation failed, trying local:', backendError);
         // Fallback to local creation
         return createFolder(name, currentPath);
       }
@@ -242,7 +242,7 @@ const FileExplorer = () => {
       try {
         const result = await fileService.createFile(name, content, currentPath);
         newPath = result.path;
-        console.log(`✅ File created via backend: ${name} in ${currentPath}`);
+        // console.log(`✅ File created via backend: ${name} in ${currentPath}`);
       } catch (backendError) {
         console.warn('Backend file creation failed, trying local:', backendError);
         // Fallback to local creation
@@ -286,7 +286,7 @@ const FileExplorer = () => {
       // Update local context
       deleteItems(paths);
       setSelectedItems([]); // Clear selection after deletion
-      console.log(`✅ Items deleted:`, paths);
+      // console.log(`✅ Items deleted:`, paths);
       
     } catch (error) {
       console.error('❌ Error deleting items:', error);
@@ -319,7 +319,7 @@ const FileExplorer = () => {
         prev.map(path => path === oldPath ? newPath : path)
       );
       
-      console.log(`✅ Item renamed: ${oldPath} → ${newPath}`);
+      // console.log(`✅ Item renamed: ${oldPath} → ${newPath}`);
       return newPath;
       
     } catch (error) {
@@ -374,10 +374,10 @@ const FileExplorer = () => {
           }
           
           fileService.openFile(item.path, fileContent);
-          console.log(`📝 Opening editable file: ${item.path}`);
+          // console.log(`📝 Opening editable file: ${item.path}`);
         } else {
           // For non-editable files, could open with different applications
-          console.log(`📂 Opening file: ${item.path} (type: ${item.extension})`);
+          // console.log(`📂 Opening file: ${item.path} (type: ${item.extension})`);
           alert(`File type ".${item.extension}" is not directly editable. File opened in preview mode.`);
         }
         
@@ -429,13 +429,13 @@ const FileExplorer = () => {
 
   const currentContents = getCurrentDirectoryContentsSorted();
 
-  console.log('📂 FileExplorer - Current contents:', {
-    currentPath,
-    totalItems: currentContents.length,
-    items: currentContents.map(item => ({ name: item.name, type: item.type, path: item.path })),
-    fileSystemKeys: Object.keys(fileSystem),
-    fileSystemSize: Object.keys(fileSystem).length
-  });
+  // console.log('📂 FileExplorer - Current contents:', {
+  //   currentPath,
+  //   totalItems: currentContents.length,
+  //   items: currentContents.map(item => ({ name: item.name, type: item.type, path: item.path })),
+  //   fileSystemKeys: Object.keys(fileSystem),
+  //   fileSystemSize: Object.keys(fileSystem).length
+  // });
 
   return (
     <div className="file-explorer">
