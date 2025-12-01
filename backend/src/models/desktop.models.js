@@ -8,7 +8,7 @@ const desktopSchema = new mongoose.Schema({
   },
   wallpaper: {
     type: String,
-    default: '/assets/wallpapers/default.jpg'
+    default: 'https://images.unsplash.com/photo-1446776877081-d282a0f896e2?w=1920&h=1080&fit=crop'
   },
   desktopIcons: [{
     appId: {
