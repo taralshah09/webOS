@@ -14,7 +14,7 @@ import { initializeUserFileSystem } from './src/services/fileSystem.services.js'
 const app = express();
 const PORT = process.env.PORT || 5000;
 const MONGO_URL = process.env.MONGO_URL;
-const FRONTEND_URL = "https://web--os.vercel.app/";
+const FRONTEND_URL = "https://web--os.vercel.app";
 
 // MongoDB connection
 mongoose
