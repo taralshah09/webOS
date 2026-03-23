@@ -114,7 +114,7 @@ export const FileSystemProvider = ({ children }) => {
 
   // **NEW: Backend API helper**
   const apiCall = useCallback(async (url, options = {}) => {
-    const apiBaseUrl = import.meta.env.VITE_API_URL || 'https://webos-opx9.onrender.com/api';
+    const apiBaseUrl = import.meta.env.VITE_API_URL || 'https://webos-lt4f.onrender.com/api';
     const fullUrl = `${apiBaseUrl}${url}`;
 
     // console.log('🌐 Making API call:', {
@@ -192,7 +192,6 @@ export const FileSystemProvider = ({ children }) => {
         setError('Failed to initialize file system');
       }
     } catch (error) {
-      // console.error('❌ Error initializing file system:', error);
       setError(error.message);
     } finally {
       setLoading(false);
@@ -202,7 +201,7 @@ export const FileSystemProvider = ({ children }) => {
   // **NEW: Test backend connectivity**
   const testBackendConnection = useCallback(async () => {
     try {
-      const apiBaseUrl = import.meta.env.VITE_API_URL || 'https://webos-opx9.onrender.com';
+      const apiBaseUrl = import.meta.env.VITE_API_URL || 'https://webos-lt4f.onrender.com';
       const response = await fetch(`${apiBaseUrl}/health`);
       const result = await response.json();
 

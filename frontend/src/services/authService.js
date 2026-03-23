@@ -1,5 +1,5 @@
 // const API_URL = import.meta.env.VITE_API_URL || "https://webos-opx9.onrender.com/api/auth";
-const API_URL = "https://webos-opx9.onrender.com/api/auth";
+const API_URL = "https://webos-lt4f.onrender.com/api/auth";
 
 export const register = async (username, email, password) => {
   const res = await fetch(`${API_URL}/register`, {
